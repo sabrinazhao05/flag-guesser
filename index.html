@@ -1106,11 +1106,10 @@ function levenshtein(a,b){
 function normalize(s){ return s.toLowerCase().replace(/[^a-z]/g,''); }
 
 function thresholdFor(len){
-  if(len<=3) return 0;
   if(len<=4) return 1;
   if(len<=6) return 2;
-  if(len<=9) return 3;
-  return 4;
+  if(len<=9) return 2;
+  return 3;
 }
 
 function nameCandidates(country){
