@@ -1113,19 +1113,48 @@ function thresholdFor(len){
   return 4;
 }
 
+function nameCandidates(country){
+  const list = [country.n];
+  country.n.split(' ').forEach(w => { if(w.length>=4) list.push(w); });
+  if(country.alt) list.push(...country.alt);
+  return list;
+}
+
+function strictNameCandidates(country){
+  const list = [country.n];
+  if(country.alt) list.push(...country.alt);
+  return list;
+}
+
+function bestDistanceTo(a, country){
+  let best = Infinity;
+  strictNameCandidates(country).forEach(cand => {
+    const b = normalize(cand);
+    const d = levenshtein(a,b);
+    if(d < best) best = d;
+  });
+  return best;
+}
+
 function isCorrectGuess(typed, country){
   const a = normalize(typed);
   if(!a) return false;
-  const candidates = [country.n];
-  country.n.split(' ').forEach(w => { if(w.length>=4) candidates.push(w); });
-  if(country.alt) candidates.push(...country.alt);
-  for(const cand of candidates){
+
+  let targetBest = Infinity;
+  nameCandidates(country).forEach(cand => {
     const b = normalize(cand);
     const t = thresholdFor(b.length);
-    if(Math.abs(a.length-b.length) > t) continue;
-    if(levenshtein(a,b) <= t) return true;
+    if(Math.abs(a.length-b.length) > t) return;
+    const d = levenshtein(a,b);
+    if(d <= t && d < targetBest) targetBest = d;
+  });
+  if(targetBest === Infinity) return false;
+
+  for(const other of COUNTRIES){
+    if(other.n === country.n) continue;
+    if(bestDistanceTo(a, other) <= targetBest) return false;
   }
-  return false;
+  return true;
 }
 
 function getPoolCountries(){
