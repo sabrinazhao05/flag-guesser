@@ -1592,7 +1592,7 @@ function handleVersusMessage(msg, myRole){
       renderVersusWaiting();
       broadcastVersusState();
     } else if(msg.type === 'claim'){
-      registerVersusWinner('guest');
+      registerVersusWinner(msg.correct ? 'guest' : 'host');
     } else if(msg.type === 'leave'){
       setVersusStatus('Your friend left the room.');
     }
@@ -1731,12 +1731,14 @@ function renderVersusRound(){
       btn.textContent = opt.n;
       btn.onclick = () => {
         if(versusLocked) return;
+        versusLocked = true;
+        document.querySelectorAll('.opt').forEach(b => b.disabled = true);
         if(opt.n === country.n){
           btn.classList.add('correct');
-          attemptVersusClaim();
+          attemptVersusClaim(true);
         } else {
           btn.classList.add('wrong');
-          setTimeout(() => btn.classList.remove('wrong'), 400);
+          attemptVersusClaim(false);
         }
       };
       optWrap.appendChild(btn);
@@ -1746,15 +1748,16 @@ function renderVersusRound(){
     input.focus();
     input.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' && !versusLocked){
+        versusLocked = true;
+        input.disabled = true;
         const ok = isCorrectGuess(input.value, country);
         if(ok){
           input.value = country.n;
           input.classList.add('good');
-          attemptVersusClaim();
         } else {
           input.classList.add('bad');
-          setTimeout(() => input.classList.remove('bad'), 400);
         }
+        attemptVersusClaim(ok);
       }
     });
   }
@@ -1770,13 +1773,11 @@ function renderVersusRound(){
   if(remaining < gTime){ timeLeft = remaining; }
 }
 
-function attemptVersusClaim(){
-  if(versusLocked) return;
-  versusLocked = true;
+function attemptVersusClaim(wasCorrect){
   if(versusRole === 'host'){
-    registerVersusWinner('host');
+    registerVersusWinner(wasCorrect ? 'host' : 'guest');
   } else {
-    versusSend({ type:'claim' });
+    versusSend({ type:'claim', correct: wasCorrect });
   }
 }
 
