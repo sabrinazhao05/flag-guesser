@@ -1492,7 +1492,7 @@ function renderVersusMenu(){
   card.innerHTML = `
     <div class="start">
       <p>Play the same flags as a friend on another device. First to answer each round scores the point.</p>
-      <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" style="margin-bottom:14px;">
+      <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-bottom:14px;">
       <div class="mode-toggle" style="width:100%; justify-content:center; margin-bottom:14px;" id="versusLengthToggle">
         <button data-vlen="5">Best of 5</button>
         <button data-vlen="10" class="active">Best of 10</button>
@@ -1500,7 +1500,7 @@ function renderVersusMenu(){
       </div>
       <button class="begin-btn" id="createRoomBtn" style="margin-bottom:10px;">Create a room</button>
       <div class="type-wrap" style="margin-bottom:10px;">
-        <input type="text" class="type-input" id="joinPinInput" placeholder="Enter room PIN" maxlength="4" inputmode="numeric">
+        <input type="text" class="type-input" id="joinPinInput" placeholder="Enter room PIN" maxlength="4" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <button class="next-btn" id="joinRoomBtn">Join a room</button>
       <p id="versusStatusMsg" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-top:14px;"></p>
@@ -1531,13 +1531,28 @@ function setVersusStatus(msg){
   if(el) el.textContent = msg;
 }
 
+const VERSUS_ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]
+};
+
 function createVersusRoom(){
   const pin = randomPin();
   versusPin = pin;
   versusRole = 'host';
   setVersusStatus('Opening room…');
-  peer = new Peer('flagguesser-'+pin);
+  peer = new Peer('flagguesser-'+pin, { config: VERSUS_ICE_CONFIG });
+  const openTimeout = setTimeout(() => {
+    setVersusStatus('Taking a while to open the room — check your connection and try again.');
+  }, 12000);
   peer.on('open', () => {
+    clearTimeout(openTimeout);
     versusState = {
       status: 'waiting',
       hostName: versusName,
@@ -1557,7 +1572,8 @@ function createVersusRoom(){
     conn.on('close', () => { setVersusStatus('Your friend disconnected.'); });
   });
   peer.on('error', (err) => {
-    setVersusStatus('Connection error: ' + err.type + '. Try again.');
+    clearTimeout(openTimeout);
+    setVersusStatus('Connection error (' + err.type + '). Try again, or make sure both of you have a stable connection.');
   });
 }
 
@@ -1565,19 +1581,24 @@ function joinVersusRoom(pin){
   versusPin = pin;
   versusRole = 'guest';
   setVersusStatus('Connecting…');
-  peer = new Peer();
+  peer = new Peer(undefined, { config: VERSUS_ICE_CONFIG });
+  const connectTimeout = setTimeout(() => {
+    setVersusStatus('Could not reach that room. Double check the PIN and that the host is still waiting.');
+  }, 12000);
   peer.on('open', () => {
     const conn = peer.connect('flagguesser-'+pin, { reliable: true });
     peerConn = conn;
     conn.on('open', () => {
+      clearTimeout(connectTimeout);
       versusSend({ type:'join', name: versusName });
     });
     conn.on('data', (msg) => handleVersusMessage(msg, 'guest'));
     conn.on('close', () => { setVersusStatus('Connection to host was lost.'); });
-    conn.on('error', () => { setVersusStatus('Could not reach that room. Check the PIN.'); });
+    conn.on('error', () => { clearTimeout(connectTimeout); setVersusStatus('Could not reach that room. Check the PIN.'); });
   });
   peer.on('error', (err) => {
-    setVersusStatus('Connection error: ' + err.type + '. Try again.');
+    clearTimeout(connectTimeout);
+    setVersusStatus('Connection error (' + err.type + '). Try again.');
   });
 }
 
