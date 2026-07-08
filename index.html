@@ -1492,7 +1492,7 @@ function renderVersusMenu(){
   card.innerHTML = `
     <div class="start">
       <p>Play the same flags as a friend on another device. First to answer each round scores the point.</p>
-      <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-bottom:14px;">
+      <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${versusName ? versusName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
       <div class="mode-toggle" style="width:100%; justify-content:center; margin-bottom:14px;" id="versusLengthToggle">
         <button data-vlen="5">Best of 5</button>
         <button data-vlen="10" class="active">Best of 10</button>
@@ -1542,6 +1542,10 @@ const VERSUS_ICE_CONFIG = {
   ]
 };
 
+function attachIceDiagnostics(conn){
+  // diagnostics disabled — status text stays as-is
+}
+
 function createVersusRoom(){
   const pin = randomPin();
   versusPin = pin;
@@ -1568,6 +1572,7 @@ function createVersusRoom(){
   });
   peer.on('connection', (conn) => {
     peerConn = conn;
+    attachIceDiagnostics(conn);
     conn.on('data', (msg) => handleVersusMessage(msg, 'host'));
     conn.on('close', () => { setVersusStatus('Your friend disconnected.'); });
   });
@@ -1588,6 +1593,7 @@ function joinVersusRoom(pin){
   peer.on('open', () => {
     const conn = peer.connect('flagguesser-'+pin, { reliable: true });
     peerConn = conn;
+    attachIceDiagnostics(conn);
     conn.on('open', () => {
       clearTimeout(connectTimeout);
       versusSend({ type:'join', name: versusName });
