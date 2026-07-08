@@ -1504,6 +1504,7 @@ function renderVersusMenu(){
       </div>
       <button class="next-btn" id="joinRoomBtn">Join a room</button>
       <p id="versusStatusMsg" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-top:14px;"></p>
+      <button class="next-btn" id="versusCancelBtn" style="display:none; margin-top:10px;">Cancel</button>
     </div>
   `;
 
@@ -1524,6 +1525,19 @@ function renderVersusMenu(){
     if(pin.length !== 4){ alert('Enter the 4-digit room PIN.'); return; }
     joinVersusRoom(pin);
   };
+  document.getElementById('versusCancelBtn').onclick = () => {
+    leaveVersusRoom();
+    renderVersusMenu();
+  };
+}
+
+function setVersusPending(isPending){
+  const createBtn = document.getElementById('createRoomBtn');
+  const joinBtn = document.getElementById('joinRoomBtn');
+  const cancelBtn = document.getElementById('versusCancelBtn');
+  if(createBtn) createBtn.disabled = isPending;
+  if(joinBtn) joinBtn.disabled = isPending;
+  if(cancelBtn) cancelBtn.style.display = isPending ? 'block' : 'none';
 }
 
 function setVersusStatus(msg){
@@ -1551,6 +1565,7 @@ function createVersusRoom(){
   versusPin = pin;
   versusRole = 'host';
   setVersusStatus('Opening room…');
+  setVersusPending(true);
   peer = new Peer('flagguesser-'+pin, { config: VERSUS_ICE_CONFIG });
   const openTimeout = setTimeout(() => {
     setVersusStatus('Taking a while to open the room — check your connection and try again.');
@@ -1586,6 +1601,7 @@ function joinVersusRoom(pin){
   versusPin = pin;
   versusRole = 'guest';
   setVersusStatus('Connecting…');
+  setVersusPending(true);
   peer = new Peer(undefined, { config: VERSUS_ICE_CONFIG });
   const connectTimeout = setTimeout(() => {
     setVersusStatus('Could not reach that room. Double check the PIN and that the host is still waiting.');
