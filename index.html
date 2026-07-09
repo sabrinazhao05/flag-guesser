@@ -1703,9 +1703,21 @@ function handleVersusMessage(msg, myRole){
       renderVersusWaiting();
       broadcastVersusState();
     } else if(msg.type === 'claim'){
-      registerVersusWinner(msg.correct ? 'guest' : 'host');
+      registerVersusWinner(msg.correct ? 'guest' : 'host', msg.correct ? 'correct' : 'wrong');
     } else if(msg.type === 'leave'){
       setVersusStatus('Your friend left the room.');
+    } else if(msg.type === 'rematch_request'){
+      versusState.status = 'rematch_pending';
+      versusState.rematchRequestBy = 'guest';
+      broadcastVersusState();
+      renderVersusRematchPending();
+    } else if(msg.type === 'rematch_accept'){
+      startVersusRematch();
+    } else if(msg.type === 'rematch_decline'){
+      versusState.status = 'finished';
+      versusState.rematchRequestBy = null;
+      broadcastVersusState();
+      renderVersusEnd();
     }
   } else {
     if(msg.type === 'state'){
@@ -1727,6 +1739,8 @@ function handleVersusUpdate(){
     } else if(data.currentRoundWinner){
       renderVersusRoundResult();
     }
+  } else if(data.status === 'rematch_pending'){
+    renderVersusRematchPending();
   } else if(data.status === 'finished'){
     renderVersusEnd();
   }
@@ -1878,7 +1892,7 @@ function renderVersusRound(){
   const remaining = Math.max(0.1, gTime - elapsed);
   startTimer(gTime, () => {
     if(versusRole === 'host'){
-      registerVersusWinner('none');
+      registerVersusWinner('none', 'timeout');
     }
   });
   if(remaining < gTime){ timeLeft = remaining; }
@@ -1886,16 +1900,17 @@ function renderVersusRound(){
 
 function attemptVersusClaim(wasCorrect){
   if(versusRole === 'host'){
-    registerVersusWinner(wasCorrect ? 'host' : 'guest');
+    registerVersusWinner(wasCorrect ? 'host' : 'guest', wasCorrect ? 'correct' : 'wrong');
   } else {
     versusSend({ type:'claim', correct: wasCorrect });
   }
 }
 
-function registerVersusWinner(winner){
+function registerVersusWinner(winner, reason){
   if(versusRole !== 'host') return;
   if(versusState.currentRoundWinner) return;
   versusState.currentRoundWinner = winner;
+  versusState.currentRoundReason = reason || 'correct';
   broadcastVersusState();
   renderVersusRoundResult();
   if(!versusAdvanceTimer){
@@ -1908,6 +1923,7 @@ function renderVersusRoundResult(){
   versusLocked = true;
   const data = versusState;
   const winner = data.currentRoundWinner;
+  const reason = data.currentRoundReason || 'correct';
   const country = versusCurrentCountry;
   if(!country) return;
 
@@ -1919,10 +1935,17 @@ function renderVersusRoundResult(){
   if(input) input.disabled = true;
 
   const fb = document.getElementById('feedback');
+  const oppName = versusOpponentName || 'Opponent';
   let label;
-  if(winner === 'none') label = `Nobody got it — ${country.n}`;
-  else if(winner === versusRole) label = `You got it first!`;
-  else label = `${versusOpponentName || 'Opponent'} got it first — ${country.n}`;
+  if(winner === 'none'){
+    label = `Nobody got it — ${country.n}`;
+  } else if(reason === 'wrong'){
+    if(winner === versusRole) label = `${oppName} guessed wrong — you get the point!`;
+    else label = `You guessed wrong — ${oppName} gets the point.`;
+  } else {
+    if(winner === versusRole) label = `You got it first!`;
+    else label = `${oppName} got it first — ${country.n}`;
+  }
   fb.innerHTML = `<div class="answer-reveal">${label}</div>`;
 }
 
@@ -1951,6 +1974,75 @@ function advanceVersusRound(){
   if(done){ renderVersusEnd(); } else { renderVersusRound(); }
 }
 
+function startVersusRematch(){
+  if(versusRole !== 'host') return;
+  const data = versusState;
+  data.status = 'waiting';
+  data.rematchRequestBy = null;
+  data.roundIndex = 0;
+  data.currentRoundWinner = null;
+  data.roundStartTime = null;
+  data.scores = { host: 0, guest: 0 };
+  data.flagSequence = makeVersusSequence(data.settings.matchLength === 'infinite' ? 40 : data.settings.matchLength);
+  versusLastRenderedRound = -1;
+  broadcastVersusState();
+  renderVersusWaiting();
+}
+
+function renderVersusRematchPending(){
+  document.getElementById('flagBar').style.display = 'none';
+  document.getElementById('masthead').style.display = 'block';
+  document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
+  const card = document.getElementById('card');
+  const data = versusState;
+  const oppName = versusRole === 'host' ? data.guestName : data.hostName;
+  const iAmRequester = data.rematchRequestBy === versusRole;
+
+  if(iAmRequester){
+    card.innerHTML = `
+      <div class="start">
+        <p>Waiting for ${oppName || 'your opponent'} to accept the rematch…</p>
+        <button class="next-btn" id="cancelRematchBtn" style="margin-top:14px;">Cancel</button>
+      </div>
+    `;
+    document.getElementById('cancelRematchBtn').onclick = () => {
+      if(versusRole === 'host'){
+        versusState.status = 'finished';
+        versusState.rematchRequestBy = null;
+        broadcastVersusState();
+        renderVersusEnd();
+      } else {
+        versusSend({ type:'rematch_decline' });
+      }
+    };
+  } else {
+    card.innerHTML = `
+      <div class="start">
+        <p><strong>${oppName || 'Your opponent'}</strong> wants a rematch.</p>
+        <button class="begin-btn" id="acceptRematchBtn" style="margin-bottom:10px;">Accept</button>
+        <button class="next-btn" id="declineRematchBtn">Decline</button>
+      </div>
+    `;
+    document.getElementById('acceptRematchBtn').onclick = () => {
+      if(versusRole === 'host'){
+        startVersusRematch();
+      } else {
+        versusSend({ type:'rematch_accept' });
+      }
+    };
+    document.getElementById('declineRematchBtn').onclick = () => {
+      if(versusRole === 'host'){
+        versusState.status = 'finished';
+        versusState.rematchRequestBy = null;
+        broadcastVersusState();
+        renderVersusEnd();
+      } else {
+        versusSend({ type:'rematch_decline' });
+      }
+    };
+  }
+}
+
 function renderVersusEnd(){
   stopTimer();
   document.getElementById('flagBar').style.display = 'none';
@@ -1974,25 +2066,23 @@ function renderVersusEnd(){
         <div><span class="num">${myScore}</span><span class="lbl">You</span></div>
         <div><span class="num">${oppScore}</span><span class="lbl">${oppName || 'Opponent'}</span></div>
       </div>
-      <button class="next-btn" id="rematchBtn" style="margin-bottom:10px;">${versusRole === 'host' ? 'Rematch' : 'Wait for rematch'}</button>
+      <button class="next-btn" id="rematchBtn" style="margin-bottom:10px;">Rematch</button>
       <button class="next-btn" id="leaveVersusEndBtn">Leave</button>
     </div>
   `;
-  if(versusRole === 'host'){
-    document.getElementById('rematchBtn').onclick = () => {
-      versusState.status = 'waiting';
-      versusState.roundIndex = 0;
-      versusState.currentRoundWinner = null;
-      versusState.roundStartTime = null;
-      versusState.scores = { host: 0, guest: 0 };
-      versusState.flagSequence = makeVersusSequence(data.settings.matchLength === 'infinite' ? 40 : data.settings.matchLength);
-      versusLastRenderedRound = -1;
+  document.getElementById('rematchBtn').onclick = () => {
+    if(versusRole === 'host'){
+      versusState.status = 'rematch_pending';
+      versusState.rematchRequestBy = 'host';
       broadcastVersusState();
-      renderVersusWaiting();
-    };
-  } else {
-    document.getElementById('rematchBtn').disabled = true;
-  }
+      renderVersusRematchPending();
+    } else {
+      versusSend({ type:'rematch_request' });
+      versusState.status = 'rematch_pending';
+      versusState.rematchRequestBy = 'guest';
+      renderVersusRematchPending();
+    }
+  };
   document.getElementById('leaveVersusEndBtn').onclick = () => { versusSend({type:'leave'}); leaveVersusRoom(); renderVersusMenu(); };
 }
 
