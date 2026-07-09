@@ -1375,14 +1375,22 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     if(isRight){
       score++; streak++;
       bestStreak = Math.max(bestStreak, streak);
+      setTimeout(() => {
+        round++;
+        if(round >= ROUNDS){ renderEnd(); } else { renderRound(); }
+      }, 900);
     } else {
       streak = 0;
       missed.push(country);
+      if(roundsSetting === 'all' && mode === 'type'){
+        setTimeout(() => { renderEnd(); }, 1300);
+      } else {
+        setTimeout(() => {
+          round++;
+          if(round >= ROUNDS){ renderEnd(); } else { renderRound(); }
+        }, 1300);
+      }
     }
-    setTimeout(() => {
-      round++;
-      if(round >= ROUNDS){ renderEnd(); } else { renderRound(); }
-    }, isRight ? 900 : 1300);
   }
 }
 
