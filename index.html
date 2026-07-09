@@ -1382,7 +1382,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     } else {
       streak = 0;
       missed.push(country);
-      if(roundsSetting === 'all' && mode === 'type'){
+      if(roundsSetting === 'all'){
         setTimeout(() => { renderEnd(); }, 1300);
       } else {
         setTimeout(() => {
