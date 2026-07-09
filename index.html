@@ -1550,6 +1550,10 @@ function renderVersusMenu(){
     </div>
   `;
 
+  document.getElementById('versusName').addEventListener('input', (e) => {
+    versusName = e.target.value;
+  });
+
   document.getElementById('versusLengthToggle').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-vlen]');
     if(!btn) return;
