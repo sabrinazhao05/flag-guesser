@@ -1635,6 +1635,14 @@ function attachIceDiagnostics(conn){
   // diagnostics disabled — status text stays as-is
 }
 
+function resetVersusAttempt(){
+  if(peerConn){ try{ peerConn.close(); }catch(e){} peerConn = null; }
+  if(peer){ try{ peer.destroy(); }catch(e){} peer = null; }
+  versusPin = null;
+  versusRole = null;
+  setVersusPending(false);
+}
+
 function createVersusRoom(){
   const pin = randomPin();
   versusPin = pin;
@@ -1645,6 +1653,7 @@ function createVersusRoom(){
     peer = new Peer('flagguesser-'+pin, { config: iceConfig });
     const openTimeout = setTimeout(() => {
       setVersusStatus('Taking a while to open the room — check your connection and try again.');
+      resetVersusAttempt();
     }, 12000);
     peer.on('open', () => {
       clearTimeout(openTimeout);
@@ -1670,6 +1679,7 @@ function createVersusRoom(){
     peer.on('error', (err) => {
       clearTimeout(openTimeout);
       setVersusStatus('Connection error (' + err.type + '). Try again, or make sure both of you have a stable connection.');
+      resetVersusAttempt();
     });
   });
 }
@@ -1683,6 +1693,7 @@ function joinVersusRoom(pin){
     peer = new Peer(undefined, { config: iceConfig });
     const connectTimeout = setTimeout(() => {
       setVersusStatus('Could not reach that room. Double check the PIN and that the host is still waiting.');
+      resetVersusAttempt();
     }, 12000);
     peer.on('open', () => {
       const conn = peer.connect('flagguesser-'+pin, { reliable: true });
@@ -1694,11 +1705,16 @@ function joinVersusRoom(pin){
       });
       conn.on('data', (msg) => handleVersusMessage(msg, 'guest'));
       conn.on('close', () => { showVersusDisconnectNotice('Connection to host was lost.'); });
-      conn.on('error', () => { clearTimeout(connectTimeout); setVersusStatus('Could not reach that room. Check the PIN.'); });
+      conn.on('error', () => {
+        clearTimeout(connectTimeout);
+        setVersusStatus('Could not reach that room. Check the PIN.');
+        resetVersusAttempt();
+      });
     });
     peer.on('error', (err) => {
       clearTimeout(connectTimeout);
       setVersusStatus('Connection error (' + err.type + '). Try again.');
+      resetVersusAttempt();
     });
   });
 }
