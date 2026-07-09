@@ -1535,11 +1535,7 @@ function renderVersusMenu(){
     <div class="start">
       <p>Play the same flags as a friend on another device. First to answer each round scores the point.</p>
       <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${versusName ? versusName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
-      <div class="mode-toggle" style="width:100%; justify-content:center; margin-bottom:14px;" id="versusLengthToggle">
-        <button data-vlen="5">Best of 5</button>
-        <button data-vlen="10" class="active">Best of 10</button>
-        <button data-vlen="infinite">Infinite</button>
-      </div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin:-4px 0 14px;">${infiniteMode ? 'Infinite match' : (roundsSetting === 'all' ? getPoolCountries().length + ' flags' : roundsSetting + ' flags')} — set via the length toggle above</p>
       <button class="begin-btn" id="createRoomBtn" style="margin-bottom:10px;">Create a room</button>
       <div class="type-wrap" style="margin-bottom:10px;">
         <input type="text" class="type-input" id="joinPinInput" placeholder="Enter room PIN" maxlength="4" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
@@ -1552,13 +1548,6 @@ function renderVersusMenu(){
 
   document.getElementById('versusName').addEventListener('input', (e) => {
     versusName = e.target.value;
-  });
-
-  document.getElementById('versusLengthToggle').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-vlen]');
-    if(!btn) return;
-    versusMatchLength = btn.dataset.vlen === 'infinite' ? 'infinite' : parseInt(btn.dataset.vlen, 10);
-    document.getElementById('versusLengthToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   });
 
   document.getElementById('createRoomBtn').onclick = () => {
@@ -1645,8 +1634,8 @@ function createVersusRoom(){
         status: 'waiting',
         hostName: versusName,
         guestName: null,
-        settings: { mode: mode, timeSetting: timeSetting, difficulty: difficulty, matchLength: versusMatchLength },
-        flagSequence: makeVersusSequence(versusMatchLength === 'infinite' ? 40 : versusMatchLength),
+        settings: { mode: mode, timeSetting: timeSetting, difficulty: difficulty, matchLength: (infiniteMode ? 'infinite' : (roundsSetting === 'all' ? getPoolCountries().length : roundsSetting)) },
+        flagSequence: makeVersusSequence(infiniteMode ? 40 : (roundsSetting === 'all' ? getPoolCountries().length : roundsSetting)),
         roundIndex: 0,
         scores: { host: 0, guest: 0 },
         currentRoundWinner: null,
