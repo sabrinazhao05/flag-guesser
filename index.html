@@ -1587,16 +1587,38 @@ function setVersusStatus(msg){
   if(el) el.textContent = msg;
 }
 
-const VERSUS_ICE_CONFIG = {
+const CF_TURN_KEY_ID = '21fac153a0b93391f22b1362d65dae72';
+const CF_TURN_API_TOKEN = '37d674e930411e3fa50f7912146de61f2f614dca72c282cdec03357cecd6ba3e';
+
+const FALLBACK_ICE_CONFIG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'stun:stun2.l.google.com:19302' }
   ]
 };
+
+async function getVersusIceConfig(){
+  try{
+    const res = await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/'+CF_TURN_KEY_ID+'/credentials/generate', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + CF_TURN_API_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ttl: 172800 })
+    });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    if(data && data.iceServers){
+      return { iceServers: data.iceServers.urls ? [data.iceServers] : data.iceServers };
+    }
+    throw new Error('no iceServers in response');
+  }catch(e){
+    console.warn('Falling back to STUN-only config:', e);
+    return FALLBACK_ICE_CONFIG;
+  }
+}
 
 function attachIceDiagnostics(conn){
   // diagnostics disabled — status text stays as-is
@@ -1608,34 +1630,36 @@ function createVersusRoom(){
   versusRole = 'host';
   setVersusStatus('Opening room…');
   setVersusPending(true);
-  peer = new Peer('flagguesser-'+pin, { config: VERSUS_ICE_CONFIG });
-  const openTimeout = setTimeout(() => {
-    setVersusStatus('Taking a while to open the room — check your connection and try again.');
-  }, 12000);
-  peer.on('open', () => {
-    clearTimeout(openTimeout);
-    versusState = {
-      status: 'waiting',
-      hostName: versusName,
-      guestName: null,
-      settings: { mode: mode, timeSetting: timeSetting, difficulty: difficulty, matchLength: versusMatchLength },
-      flagSequence: makeVersusSequence(versusMatchLength === 'infinite' ? 40 : versusMatchLength),
-      roundIndex: 0,
-      scores: { host: 0, guest: 0 },
-      currentRoundWinner: null,
-      roundStartTime: null
-    };
-    renderVersusWaiting();
-  });
-  peer.on('connection', (conn) => {
-    peerConn = conn;
-    attachIceDiagnostics(conn);
-    conn.on('data', (msg) => handleVersusMessage(msg, 'host'));
-    conn.on('close', () => { setVersusStatus('Your friend disconnected.'); });
-  });
-  peer.on('error', (err) => {
-    clearTimeout(openTimeout);
-    setVersusStatus('Connection error (' + err.type + '). Try again, or make sure both of you have a stable connection.');
+  getVersusIceConfig().then(iceConfig => {
+    peer = new Peer('flagguesser-'+pin, { config: iceConfig });
+    const openTimeout = setTimeout(() => {
+      setVersusStatus('Taking a while to open the room — check your connection and try again.');
+    }, 12000);
+    peer.on('open', () => {
+      clearTimeout(openTimeout);
+      versusState = {
+        status: 'waiting',
+        hostName: versusName,
+        guestName: null,
+        settings: { mode: mode, timeSetting: timeSetting, difficulty: difficulty, matchLength: versusMatchLength },
+        flagSequence: makeVersusSequence(versusMatchLength === 'infinite' ? 40 : versusMatchLength),
+        roundIndex: 0,
+        scores: { host: 0, guest: 0 },
+        currentRoundWinner: null,
+        roundStartTime: null
+      };
+      renderVersusWaiting();
+    });
+    peer.on('connection', (conn) => {
+      peerConn = conn;
+      attachIceDiagnostics(conn);
+      conn.on('data', (msg) => handleVersusMessage(msg, 'host'));
+      conn.on('close', () => { setVersusStatus('Your friend disconnected.'); });
+    });
+    peer.on('error', (err) => {
+      clearTimeout(openTimeout);
+      setVersusStatus('Connection error (' + err.type + '). Try again, or make sure both of you have a stable connection.');
+    });
   });
 }
 
@@ -1644,25 +1668,27 @@ function joinVersusRoom(pin){
   versusRole = 'guest';
   setVersusStatus('Connecting…');
   setVersusPending(true);
-  peer = new Peer(undefined, { config: VERSUS_ICE_CONFIG });
-  const connectTimeout = setTimeout(() => {
-    setVersusStatus('Could not reach that room. Double check the PIN and that the host is still waiting.');
-  }, 12000);
-  peer.on('open', () => {
-    const conn = peer.connect('flagguesser-'+pin, { reliable: true });
-    peerConn = conn;
-    attachIceDiagnostics(conn);
-    conn.on('open', () => {
-      clearTimeout(connectTimeout);
-      versusSend({ type:'join', name: versusName });
+  getVersusIceConfig().then(iceConfig => {
+    peer = new Peer(undefined, { config: iceConfig });
+    const connectTimeout = setTimeout(() => {
+      setVersusStatus('Could not reach that room. Double check the PIN and that the host is still waiting.');
+    }, 12000);
+    peer.on('open', () => {
+      const conn = peer.connect('flagguesser-'+pin, { reliable: true });
+      peerConn = conn;
+      attachIceDiagnostics(conn);
+      conn.on('open', () => {
+        clearTimeout(connectTimeout);
+        versusSend({ type:'join', name: versusName });
+      });
+      conn.on('data', (msg) => handleVersusMessage(msg, 'guest'));
+      conn.on('close', () => { setVersusStatus('Connection to host was lost.'); });
+      conn.on('error', () => { clearTimeout(connectTimeout); setVersusStatus('Could not reach that room. Check the PIN.'); });
     });
-    conn.on('data', (msg) => handleVersusMessage(msg, 'guest'));
-    conn.on('close', () => { setVersusStatus('Connection to host was lost.'); });
-    conn.on('error', () => { clearTimeout(connectTimeout); setVersusStatus('Could not reach that room. Check the PIN.'); });
-  });
-  peer.on('error', (err) => {
-    clearTimeout(connectTimeout);
-    setVersusStatus('Connection error (' + err.type + '). Try again.');
+    peer.on('error', (err) => {
+      clearTimeout(connectTimeout);
+      setVersusStatus('Connection error (' + err.type + '). Try again.');
+    });
   });
 }
 
