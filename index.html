@@ -1233,7 +1233,7 @@ function renderStart(){
   document.getElementById('masthead').style.display = 'block';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
-  const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? 'Every flag in the current difficulty pool — see how many you can get right.' : `${roundsSetting} flags — see how many you can get right.`);
+  const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? `${getPoolCountries().length} flags on ${difficulty} difficulty.` : `${roundsSetting} flags — see how many you can get right.`);
   card.innerHTML = `
     <div class="start">
       <p>${lengthText}<br>${mode==='choice' ? 'Pick the correct country from four options.' : 'Type the country name.'}<br>You get ${timeSetting} seconds per flag, on ${difficulty} difficulty.</p>
