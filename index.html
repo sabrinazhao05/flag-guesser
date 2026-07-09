@@ -1201,9 +1201,10 @@ function startTimer(limit, onExpire){
   const fill = document.getElementById('timerFill');
   const label = document.getElementById('timerLabel');
   stopTimer();
+  const startedAt = Date.now();
   timerId = setInterval(() => {
-    timeLeft -= 0.1;
-    if(timeLeft < 0) timeLeft = 0;
+    const elapsed = (Date.now() - startedAt) / 1000;
+    timeLeft = Math.max(0, limit - elapsed);
     const pct = (timeLeft/limit)*100;
     if(fill){
       fill.style.width = pct + '%';
@@ -1515,12 +1516,12 @@ function versusSend(msg){
 
 function leaveVersusRoom(){
   if(versusAdvanceTimer){ clearTimeout(versusAdvanceTimer); versusAdvanceTimer = null; }
-  if(peerConn){ try{ peerConn.close(); }catch(e){} peerConn = null; }
-  if(peer){ try{ peer.destroy(); }catch(e){} peer = null; }
   versusPin = null;
   versusRole = null;
   versusOpponentName = '';
   versusState = null;
+  if(peerConn){ try{ peerConn.close(); }catch(e){} peerConn = null; }
+  if(peer){ try{ peer.destroy(); }catch(e){} peer = null; }
   stopTimer();
 }
 
@@ -1578,6 +1579,23 @@ function setVersusPending(isPending){
 function setVersusStatus(msg){
   const el = document.getElementById('versusStatusMsg');
   if(el) el.textContent = msg;
+}
+
+function showVersusDisconnectNotice(message){
+  if(!versusPin) return;
+  stopTimer();
+  if(versusAdvanceTimer){ clearTimeout(versusAdvanceTimer); versusAdvanceTimer = null; }
+  document.getElementById('flagBar').style.display = 'none';
+  document.getElementById('masthead').style.display = 'block';
+  document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
+  const card = document.getElementById('card');
+  card.innerHTML = `
+    <div class="start">
+      <p>${message}</p>
+      <button class="next-btn" id="disconnectBackBtn" style="margin-top:14px;">Back to menu</button>
+    </div>
+  `;
+  document.getElementById('disconnectBackBtn').onclick = () => { leaveVersusRoom(); renderVersusMenu(); };
 }
 
 const CF_TURN_KEY_ID = '21fac153a0b93391f22b1362d65dae72';
@@ -1647,7 +1665,7 @@ function createVersusRoom(){
       peerConn = conn;
       attachIceDiagnostics(conn);
       conn.on('data', (msg) => handleVersusMessage(msg, 'host'));
-      conn.on('close', () => { setVersusStatus('Your friend disconnected.'); });
+      conn.on('close', () => { showVersusDisconnectNotice('Your friend disconnected.'); });
     });
     peer.on('error', (err) => {
       clearTimeout(openTimeout);
@@ -1675,7 +1693,7 @@ function joinVersusRoom(pin){
         versusSend({ type:'join', name: versusName });
       });
       conn.on('data', (msg) => handleVersusMessage(msg, 'guest'));
-      conn.on('close', () => { setVersusStatus('Connection to host was lost.'); });
+      conn.on('close', () => { showVersusDisconnectNotice('Connection to host was lost.'); });
       conn.on('error', () => { clearTimeout(connectTimeout); setVersusStatus('Could not reach that room. Check the PIN.'); });
     });
     peer.on('error', (err) => {
@@ -1697,6 +1715,8 @@ function handleVersusMessage(msg, myRole){
       broadcastVersusState();
     } else if(msg.type === 'claim'){
       registerVersusWinner(msg.correct ? 'guest' : 'host', msg.correct ? 'correct' : 'wrong');
+    } else if(msg.type === 'timeout_check'){
+      registerVersusWinner('none', 'timeout');
     } else if(msg.type === 'leave'){
       setVersusStatus('Your friend left the room.');
     } else if(msg.type === 'rematch_request'){
@@ -1886,6 +1906,8 @@ function renderVersusRound(){
   startTimer(gTime, () => {
     if(versusRole === 'host'){
       registerVersusWinner('none', 'timeout');
+    } else {
+      versusSend({ type:'timeout_check' });
     }
   });
   if(remaining < gTime){ timeLeft = remaining; }
