@@ -79,6 +79,65 @@
     padding:3px;
     gap:2px;
   }
+  .pause-setting{
+    position:fixed;
+    bottom:14px;
+    left:14px;
+    z-index:60;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,0.06);
+    border-radius:30px;
+    padding:4px 10px 4px 14px;
+  }
+  .pause-setting span{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--paper);
+    opacity:0.7;
+  }
+  .pause-setting .mode-toggle{ margin-top:0; }
+  .pause-setting .mode-toggle button{ padding:5px 12px; font-size:10px; }
+  .game-pause-btn{
+    position:absolute;
+    top:10px;
+    left:12px;
+    z-index:15;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    border:1.5px solid rgba(42,35,24,0.3);
+    background:#fffdf6;
+    color:var(--ink);
+    font-size:13px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .game-pause-btn:active{ background:#fffaf0; }
+  .pause-overlay{
+    position:absolute;
+    inset:0;
+    background:var(--paper);
+    border-radius:6px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    z-index:20;
+  }
+  .pause-overlay p{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:20px;
+    color:var(--ink);
+    margin:0;
+  }
   .mode-toggle button{
     font-family:'JetBrains Mono',monospace;
     font-size:11px;
@@ -338,6 +397,14 @@
     <div class="mode-toggle" id="playModeToggle" style="margin-top:8px;">
       <button data-play="solo" class="active">Solo</button>
       <button data-play="versus">Versus</button>
+    </div>
+  </div>
+
+  <div class="pause-setting" id="pauseSetting">
+    <span>Pause button</span>
+    <div class="mode-toggle" id="pauseToggle">
+      <button data-pause="off" class="active">Off</button>
+      <button data-pause="on">On</button>
     </div>
   </div>
 
@@ -1083,6 +1150,7 @@ let deck = [], round = 0, score = 0, bestStreak = 0, missed = [];
 let pool = [], sessionBest = 0;
 let streak = 0;
 let locked = false, mode = 'choice', timeSetting = 10, infiniteMode = false, difficulty = 'medium', timerId = null, timeLeft = 0, gameStarted = false;
+let pauseButtonEnabled = false, isPaused = false;
 
 function shuffle(arr){
   const a = arr.slice();
@@ -1194,10 +1262,13 @@ function makeOptions(correct){
   return shuffle([correct, ...distractors]);
 }
 
+let lastTimerOnExpire = null;
+
 function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
 
 function startTimer(limit, onExpire){
   timeLeft = limit;
+  lastTimerOnExpire = onExpire;
   const fill = document.getElementById('timerFill');
   const label = document.getElementById('timerLabel');
   stopTimer();
@@ -1216,6 +1287,32 @@ function startTimer(limit, onExpire){
       onExpire();
     }
   }, 100);
+}
+
+function pauseGame(){
+  if(isPaused || !gameStarted || playMode !== 'solo') return;
+  isPaused = true;
+  stopTimer();
+  const card = document.getElementById('card');
+  if(card){
+    const overlay = document.createElement('div');
+    overlay.className = 'pause-overlay';
+    overlay.id = 'pauseOverlay';
+    overlay.innerHTML = `<p>Paused</p><button class="begin-btn" id="resumeBtn" style="width:auto; padding:12px 28px;">Resume</button>`;
+    card.style.position = 'relative';
+    card.appendChild(overlay);
+    document.getElementById('resumeBtn').onclick = resumeGame;
+  }
+}
+
+function resumeGame(){
+  if(!isPaused) return;
+  isPaused = false;
+  const overlay = document.getElementById('pauseOverlay');
+  if(overlay) overlay.remove();
+  if(lastTimerOnExpire){
+    startTimer(timeLeft, lastTimerOnExpire);
+  }
 }
 
 function loadFlagInto(frameEl, country){
@@ -1276,7 +1373,10 @@ function renderRound(){
     ? `<div>streak<b>${streak}</b></div><div>best<b>${sessionBest}</b></div><div>timer<b>${timeSetting}s</b></div>`
     : `<div>score<b>${score} / ${round}</b></div><div>streak<b>${streak}</b></div><div>accuracy<b>${round ? Math.round(score/round*100) : 0}%</b></div>`;
 
+  const pauseBtnHtml = (pauseButtonEnabled && playMode === 'solo') ? `<button class="game-pause-btn" id="gamePauseBtn" title="Pause">&#10074;&#10074;</button>` : '';
+
   flagBar.innerHTML = `
+    ${pauseBtnHtml}
     <div class="row-top">
       <span class="lead">${leadText}</span>
       <span id="timerLabel">${timeSetting}s</span>
@@ -1287,6 +1387,10 @@ function renderRound(){
       <div class="flag-caption">country of origin?</div>
     </div>
   `;
+  flagBar.style.position = 'relative';
+  if(pauseButtonEnabled && playMode === 'solo'){
+    document.getElementById('gamePauseBtn').onclick = pauseGame;
+  }
 
   card.innerHTML = `
     ${bodyHtml}
@@ -2171,6 +2275,13 @@ document.getElementById('playModeToggle').addEventListener('click', (e) => {
   stopTimer();
   gameStarted = false;
   if(playMode === 'versus'){ renderVersusMenu(); } else { leaveVersusRoom(); renderStart(); }
+});
+
+document.getElementById('pauseToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-pause]');
+  if(!btn) return;
+  pauseButtonEnabled = btn.dataset.pause === 'on';
+  document.getElementById('pauseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
 });
 
 document.addEventListener('keydown', (e) => {
