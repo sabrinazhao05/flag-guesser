@@ -1319,6 +1319,7 @@ function renderRound(){
     [0,50,100,150,250,350,500].forEach(delay => setTimeout(lockScroll, delay));
     input.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' && !locked){
+        if(!input.value.trim()) return;
         const ok = isCorrectGuess(input.value, country);
         if(ok) input.value = country.n;
         input.classList.add(ok ? 'good' : 'bad');
@@ -1902,6 +1903,7 @@ function renderVersusRound(){
     input.focus();
     input.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' && !versusLocked){
+        if(!input.value.trim()) return;
         versusLocked = true;
         input.disabled = true;
         const ok = isCorrectGuess(input.value, country);
