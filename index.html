@@ -2183,6 +2183,14 @@ document.addEventListener('keydown', (e) => {
   else if(restartBtn){ e.preventDefault(); restartBtn.click(); }
 });
 
+document.addEventListener('keydown', (e) => {
+  if(e.code !== 'Space' && e.key !== ' ') return;
+  const active = document.activeElement;
+  if(active && active.tagName === 'BUTTON'){
+    e.preventDefault();
+  }
+});
+
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize', () => {
     const active = document.activeElement;
