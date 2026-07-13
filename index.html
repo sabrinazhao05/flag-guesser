@@ -103,8 +103,8 @@
   .pause-setting .mode-toggle button{ padding:5px 12px; font-size:10px; }
   .game-pause-btn{
     position:absolute;
-    top:10px;
-    left:12px;
+    bottom:3px;
+    right:3px;
     z-index:15;
     width:30px;
     height:30px;
@@ -1263,12 +1263,15 @@ function makeOptions(correct){
 }
 
 let lastTimerOnExpire = null;
+let lastTimerTotal = null;
 
 function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
 
-function startTimer(limit, onExpire){
+function startTimer(limit, onExpire, total){
   timeLeft = limit;
   lastTimerOnExpire = onExpire;
+  lastTimerTotal = total || limit;
+  const barTotal = lastTimerTotal;
   const fill = document.getElementById('timerFill');
   const label = document.getElementById('timerLabel');
   stopTimer();
@@ -1276,10 +1279,10 @@ function startTimer(limit, onExpire){
   timerId = setInterval(() => {
     const elapsed = (Date.now() - startedAt) / 1000;
     timeLeft = Math.max(0, limit - elapsed);
-    const pct = (timeLeft/limit)*100;
+    const pct = (timeLeft/barTotal)*100;
     if(fill){
       fill.style.width = pct + '%';
-      fill.classList.toggle('low', timeLeft <= limit*0.3);
+      fill.classList.toggle('low', timeLeft <= barTotal*0.3);
     }
     if(label) label.textContent = Math.ceil(timeLeft) + 's';
     if(timeLeft <= 0){
@@ -1303,6 +1306,8 @@ function pauseGame(){
     card.appendChild(overlay);
     document.getElementById('resumeBtn').onclick = resumeGame;
   }
+  const pauseBtn = document.getElementById('gamePauseBtn');
+  if(pauseBtn){ pauseBtn.innerHTML = '&#9654;'; pauseBtn.title = 'Resume'; }
 }
 
 function resumeGame(){
@@ -1311,8 +1316,10 @@ function resumeGame(){
   const overlay = document.getElementById('pauseOverlay');
   if(overlay) overlay.remove();
   if(lastTimerOnExpire){
-    startTimer(timeLeft, lastTimerOnExpire);
+    startTimer(timeLeft, lastTimerOnExpire, lastTimerTotal);
   }
+  const pauseBtn = document.getElementById('gamePauseBtn');
+  if(pauseBtn){ pauseBtn.innerHTML = '&#10074;&#10074;'; pauseBtn.title = 'Pause'; }
 }
 
 function loadFlagInto(frameEl, country){
@@ -1389,7 +1396,7 @@ function renderRound(){
   `;
   flagBar.style.position = 'relative';
   if(pauseButtonEnabled && playMode === 'solo'){
-    document.getElementById('gamePauseBtn').onclick = pauseGame;
+    document.getElementById('gamePauseBtn').onclick = () => { if(isPaused) resumeGame(); else pauseGame(); };
   }
 
   card.innerHTML = `
