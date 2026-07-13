@@ -2309,6 +2309,13 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+document.addEventListener('keydown', (e) => {
+  if(e.key !== 'Escape') return;
+  if(!pauseButtonEnabled) return;
+  if(!gameStarted || playMode !== 'solo') return;
+  if(isPaused) resumeGame(); else pauseGame();
+});
+
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize', () => {
     const active = document.activeElement;
