@@ -1307,7 +1307,7 @@ function pauseGame(){
     document.getElementById('resumeBtn').onclick = resumeGame;
   }
   const pauseBtn = document.getElementById('gamePauseBtn');
-  if(pauseBtn){ pauseBtn.innerHTML = '&#9654;'; pauseBtn.title = 'Resume'; }
+  if(pauseBtn){ pauseBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><polygon points="1,0.5 11,6 1,11.5" fill="currentColor"/></svg>'; pauseBtn.title = 'Resume'; }
 }
 
 function resumeGame(){
@@ -1319,7 +1319,7 @@ function resumeGame(){
     startTimer(timeLeft, lastTimerOnExpire, lastTimerTotal);
   }
   const pauseBtn = document.getElementById('gamePauseBtn');
-  if(pauseBtn){ pauseBtn.innerHTML = '&#10074;&#10074;'; pauseBtn.title = 'Pause'; }
+  if(pauseBtn){ pauseBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="0.5" width="3.2" height="11" fill="currentColor"/><rect x="7.8" y="0.5" width="3.2" height="11" fill="currentColor"/></svg>'; pauseBtn.title = 'Pause'; }
 }
 
 function loadFlagInto(frameEl, country){
@@ -1380,7 +1380,7 @@ function renderRound(){
     ? `<div>streak<b>${streak}</b></div><div>best<b>${sessionBest}</b></div><div>timer<b>${timeSetting}s</b></div>`
     : `<div>score<b>${score} / ${round}</b></div><div>streak<b>${streak}</b></div><div>accuracy<b>${round ? Math.round(score/round*100) : 0}%</b></div>`;
 
-  const pauseBtnHtml = (pauseButtonEnabled && playMode === 'solo') ? `<button class="game-pause-btn" id="gamePauseBtn" title="Pause">&#10074;&#10074;</button>` : '';
+  const pauseBtnHtml = (pauseButtonEnabled && playMode === 'solo') ? `<button class="game-pause-btn" id="gamePauseBtn" title="Pause"><svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="0.5" width="3.2" height="11" fill="currentColor"/><rect x="7.8" y="0.5" width="3.2" height="11" fill="currentColor"/></svg></button>` : '';
 
   flagBar.innerHTML = `
     ${pauseBtnHtml}
