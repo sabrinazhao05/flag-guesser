@@ -406,7 +406,7 @@
   <div class="pause-setting" id="pauseSetting">
     <span>Pause button</span>
     <div class="mode-toggle" id="pauseToggle">
-      <button data-pause="off">Off</button>
+      <button data-pause="off" class="active">Off</button>
       <button data-pause="on">On</button>
     </div>
   </div>
@@ -1154,6 +1154,8 @@ let pool = [], sessionBest = 0;
 let streak = 0;
 let locked = false, mode = 'choice', timeSetting = 10, infiniteMode = false, difficulty = 'medium', timerId = null, timeLeft = 0, gameStarted = false;
 let pauseButtonEnabled = false, isPaused = false;
+let modeChosen = false, timeChosen = false, lengthChosen = false, difficultyChosen = false;
+let attemptedStart = false;
 
 function shuffle(arr){
   const a = arr.slice();
@@ -1337,20 +1339,38 @@ function loadFlagInto(frameEl, country){
   img.src = 'flags/' + country.code + '.svg';
 }
 
+function getMissingSelections(){
+  const missing = [];
+  if(!modeChosen) missing.push('an answer mode');
+  if(!timeChosen) missing.push('a timer');
+  if(!lengthChosen) missing.push('a length');
+  if(!difficultyChosen) missing.push('a difficulty');
+  return missing;
+}
+
 function renderStart(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
   const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? `${getPoolCountries().length} flags on ${difficulty} difficulty.` : `${roundsSetting} flags — see how many you can get right.`);
+  const missingNow = attemptedStart ? getMissingSelections() : [];
   card.innerHTML = `
     <div class="start">
       <p>${lengthText}<br>${mode==='choice' ? 'Pick the correct country from four options.' : 'Type the country name.'}<br>${timeSetting === 'infinite' ? 'No timer' : `You get ${timeSetting} seconds`} per flag, on ${difficulty} difficulty.</p>
       ${infiniteMode && sessionBest ? `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:-8px;">session best streak: ${sessionBest}</p>` : ''}
       <button class="begin-btn" id="beginBtn">Start guessing</button>
+      <p id="startWarning" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--crimson);margin-top:12px;">${missingNow.length ? 'Please select ' + missingNow.join(', ') + ' before starting.' : ''}</p>
     </div>
   `;
   document.getElementById('beginBtn').onclick = () => {
+    const missing = getMissingSelections();
+    if(missing.length){
+      attemptedStart = true;
+      document.getElementById('startWarning').textContent = 'Please select ' + missing.join(', ') + ' before starting.';
+      return;
+    }
+    attemptedStart = false;
     gameStarted = true;
     streak = 0;
     if(infiniteMode){ refillPool(); } else { buildDeck(); }
@@ -2243,6 +2263,7 @@ document.getElementById('modeToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-mode]');
   if(!btn) return;
   mode = btn.dataset.mode;
+  modeChosen = true;
   document.getElementById('modeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   stopTimer();
   gameStarted = false;
@@ -2253,6 +2274,7 @@ document.getElementById('timeToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-time]');
   if(!btn) return;
   timeSetting = btn.dataset.time === 'infinite' ? 'infinite' : parseInt(btn.dataset.time, 10);
+  timeChosen = true;
   document.getElementById('timeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   stopTimer();
   gameStarted = false;
@@ -2265,6 +2287,7 @@ document.getElementById('lengthToggle').addEventListener('click', (e) => {
   const val = btn.dataset.length;
   infiniteMode = val === 'infinite';
   if(!infiniteMode){ roundsSetting = val === 'all' ? 'all' : parseInt(val, 10); }
+  lengthChosen = true;
   document.getElementById('lengthToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   stopTimer();
   gameStarted = false;
@@ -2275,6 +2298,7 @@ document.getElementById('difficultyToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-difficulty]');
   if(!btn) return;
   difficulty = btn.dataset.difficulty;
+  difficultyChosen = true;
   document.getElementById('difficultyToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   stopTimer();
   gameStarted = false;
