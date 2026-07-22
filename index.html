@@ -383,6 +383,7 @@
       <button data-time="3">3s</button>
       <button data-time="5">5s</button>
       <button data-time="10" class="active">10s</button>
+      <button data-time="infinite">&#8734;</button>
     </div>
     <div class="mode-toggle" id="lengthToggle" style="margin-top:8px; flex-wrap:wrap;">
       <button data-length="10" class="active">10 flags</button>
@@ -412,15 +413,6 @@
 
   <div class="flag-bar" id="flagBar" style="display:none;"></div>
   <div class="card" id="card"></div>
-
-  <footer style="text-align:center; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--paper); opacity:0.55;">
-    <a href="how-to-play.html" style="color:var(--paper); margin:0 8px;">How to Play</a>
-    <a href="flag-facts.html" style="color:var(--paper); margin:0 8px;">Flag Facts</a>
-    <a href="about.html" style="color:var(--paper); margin:0 8px;">About</a>
-    <a href="contact.html" style="color:var(--paper); margin:0 8px;">Contact</a>
-    <a href="privacy.html" style="color:var(--paper); margin:0 8px;">Privacy</a>
-    <a href="terms.html" style="color:var(--paper); margin:0 8px;">Terms</a>
-  </footer>
 </div>
 
 <script>
@@ -1353,7 +1345,7 @@ function renderStart(){
   const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? `${getPoolCountries().length} flags on ${difficulty} difficulty.` : `${roundsSetting} flags — see how many you can get right.`);
   card.innerHTML = `
     <div class="start">
-      <p>${lengthText}<br>${mode==='choice' ? 'Pick the correct country from four options.' : 'Type the country name.'}<br>You get ${timeSetting} seconds per flag, on ${difficulty} difficulty.</p>
+      <p>${lengthText}<br>${mode==='choice' ? 'Pick the correct country from four options.' : 'Type the country name.'}<br>${timeSetting === 'infinite' ? 'No timer' : `You get ${timeSetting} seconds`} per flag, on ${difficulty} difficulty.</p>
       ${infiniteMode && sessionBest ? `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:-8px;">session best streak: ${sessionBest}</p>` : ''}
       <button class="begin-btn" id="beginBtn">Start guessing</button>
     </div>
@@ -1388,8 +1380,9 @@ function renderRound(){
   }
 
   const leadText = infiniteMode ? `Flag ${streak+1}` : `Entry ${round+1} / ${ROUNDS}`;
+  const timeDisplay = timeSetting === 'infinite' ? '&#8734;' : timeSetting + 's';
   const statHtml = infiniteMode
-    ? `<div>streak<b>${streak}</b></div><div>best<b>${sessionBest}</b></div><div>timer<b>${timeSetting}s</b></div>`
+    ? `<div>streak<b>${streak}</b></div><div>best<b>${sessionBest}</b></div><div>timer<b>${timeDisplay}</b></div>`
     : `<div>score<b>${score} / ${round}</b></div><div>streak<b>${streak}</b></div><div>accuracy<b>${round ? Math.round(score/round*100) : 0}%</b></div>`;
 
   const pauseBtnHtml = (pauseButtonEnabled && playMode === 'solo') ? `<button class="game-pause-btn" id="gamePauseBtn" title="Pause"><svg width="12" height="12" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="0.5" width="3.2" height="11" fill="currentColor"/><rect x="7.8" y="0.5" width="3.2" height="11" fill="currentColor"/></svg></button>` : '';
@@ -1398,9 +1391,9 @@ function renderRound(){
     ${pauseBtnHtml}
     <div class="row-top">
       <span class="lead">${leadText}</span>
-      <span id="timerLabel">${timeSetting}s</span>
+      <span id="timerLabel">${timeDisplay}</span>
     </div>
-    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="timer-track" style="${timeSetting === 'infinite' ? 'display:none;' : ''}"><div class="timer-fill" id="timerFill"></div></div>
     <div class="flag-stage">
       <div class="flag-frame" id="flagFrame" style="aspect-ratio:${country.sq ? '1/1' : '4/3'};"></div>
       <div class="flag-caption">country of origin?</div>
@@ -1444,27 +1437,29 @@ function renderRound(){
       if(e.key === 'Enter' && !locked){
         if(!input.value.trim()) return;
         const ok = isCorrectGuess(input.value, country);
-        if(ok) input.value = country.n;
+        if(ok) input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
         input.classList.add(ok ? 'good' : 'bad');
         resolveRound(ok, country, null, input);
       }
     });
   }
 
-  startTimer(timeSetting, () => {
-    if(locked) return;
-    if(mode === 'choice'){
-      document.querySelectorAll('.opt').forEach(b => {
-        b.disabled = true;
-        if(b.textContent === country.n) b.classList.add('reveal');
-      });
-      resolveRound(false, country, null, null, true);
-    } else {
-      const input = document.getElementById('typeInput');
-      if(input){ input.value = country.n; input.classList.add('bad'); input.disabled = true; }
-      resolveRound(false, country, null, input, true);
-    }
-  });
+  if(timeSetting !== 'infinite'){
+    startTimer(timeSetting, () => {
+      if(locked) return;
+      if(mode === 'choice'){
+        document.querySelectorAll('.opt').forEach(b => {
+          b.disabled = true;
+          if(b.textContent === country.n) b.classList.add('reveal');
+        });
+        resolveRound(false, country, null, null, true);
+      } else {
+        const input = document.getElementById('typeInput');
+        if(input){ input.value = country.n; input.classList.add('bad'); input.disabled = true; }
+        resolveRound(false, country, null, input, true);
+      }
+    });
+  }
 }
 
 function resolveRound(isRight, country, btnEl, inputEl, timedOut){
@@ -2031,7 +2026,7 @@ function renderVersusRound(){
         input.disabled = true;
         const ok = isCorrectGuess(input.value, country);
         if(ok){
-          input.value = country.n;
+          input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
           input.classList.add('good');
         } else {
           input.classList.add('bad');
@@ -2257,7 +2252,7 @@ document.getElementById('modeToggle').addEventListener('click', (e) => {
 document.getElementById('timeToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-time]');
   if(!btn) return;
-  timeSetting = parseInt(btn.dataset.time, 10);
+  timeSetting = btn.dataset.time === 'infinite' ? 'infinite' : parseInt(btn.dataset.time, 10);
   document.getElementById('timeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
   stopTimer();
   gameStarted = false;
