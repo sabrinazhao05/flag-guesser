@@ -383,7 +383,7 @@
       <button data-time="3">3s</button>
       <button data-time="5">5s</button>
       <button data-time="10">10s</button>
-      <button data-time="infinite" style="line-height:1;"><span style="font-size:15px; display:inline-block; transform:scaleX(1.3); line-height:1;">&#8734;</span></button>
+      <button data-time="infinite" id="infiniteTimeBtn" style="line-height:1;"><span style="font-size:15px; display:inline-block; transform:scaleX(1.3); line-height:1;">&#8734;</span></button>
     </div>
     <div class="mode-toggle" id="lengthToggle" style="margin-top:8px; flex-wrap:wrap;">
       <button data-length="10">10 flags</button>
@@ -1990,12 +1990,14 @@ function renderVersusRound(){
 
   const lenLabel = data.settings.matchLength === 'infinite' ? '∞' : data.settings.matchLength;
 
+  const gTimeDisplay = gTime === 'infinite' ? '<span style="font-size:20px; display:inline-block; transform:scaleX(1.3);">&#8734;</span>' : gTime + 's';
+
   flagBar.innerHTML = `
     <div class="row-top">
       <span class="lead">Round ${data.roundIndex+1}${data.settings.matchLength === 'infinite' ? '' : ' / '+lenLabel}</span>
-      <span id="timerLabel">${gTime}s</span>
+      <span id="timerLabel">${gTimeDisplay}</span>
     </div>
-    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="timer-track" style="${gTime === 'infinite' ? 'display:none;' : ''}"><div class="timer-fill" id="timerFill"></div></div>
     <div class="flag-stage">
       <div class="flag-frame" id="flagFrame" style="aspect-ratio:${country.sq ? '1/1' : '4/3'};"></div>
       <div class="flag-caption">country of origin?</div>
@@ -2008,7 +2010,7 @@ function renderVersusRound(){
     <div class="statbar">
       <div>you<b>${myScore}</b></div>
       <div>${versusOpponentName || 'opponent'}<b>${oppScore}</b></div>
-      <div>timer<b>${gTime}s</b></div>
+      <div>timer<b>${gTime === 'infinite' ? '&#8734;' : gTime + 's'}</b></div>
     </div>
   `;
 
@@ -2056,17 +2058,19 @@ function renderVersusRound(){
     });
   }
 
-  const startedAt = data.roundStartTime || Date.now();
-  const elapsed = (Date.now() - startedAt) / 1000;
-  const remaining = Math.max(0.1, gTime - elapsed);
-  startTimer(gTime, () => {
-    if(versusRole === 'host'){
-      registerVersusWinner('none', 'timeout');
-    } else {
-      versusSend({ type:'timeout_check' });
-    }
-  });
-  if(remaining < gTime){ timeLeft = remaining; }
+  if(gTime !== 'infinite'){
+    const startedAt = data.roundStartTime || Date.now();
+    const elapsed = (Date.now() - startedAt) / 1000;
+    const remaining = Math.max(0.1, gTime - elapsed);
+    startTimer(gTime, () => {
+      if(versusRole === 'host'){
+        registerVersusWinner('none', 'timeout');
+      } else {
+        versusSend({ type:'timeout_check' });
+      }
+    });
+    if(remaining < gTime){ timeLeft = remaining; }
+  }
 }
 
 function attemptVersusClaim(wasCorrect){
@@ -2310,6 +2314,16 @@ document.getElementById('playModeToggle').addEventListener('click', (e) => {
   if(!btn) return;
   playMode = btn.dataset.play;
   document.getElementById('playModeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
+  const infiniteTimeBtn = document.getElementById('infiniteTimeBtn');
+  if(playMode === 'versus'){
+    if(infiniteTimeBtn) infiniteTimeBtn.style.display = 'none';
+    if(timeSetting === 'infinite'){
+      timeSetting = 10;
+      document.getElementById('timeToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.time === '10'));
+    }
+  } else {
+    if(infiniteTimeBtn) infiniteTimeBtn.style.display = '';
+  }
   stopTimer();
   gameStarted = false;
   if(playMode === 'versus'){ renderVersusMenu(); } else { leaveVersusRoom(); renderStart(); }
