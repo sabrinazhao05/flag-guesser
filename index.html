@@ -85,7 +85,9 @@
     left:14px;
     z-index:60;
     display:flex;
+    flex-direction:row;
     align-items:center;
+    flex-wrap:nowrap;
     gap:8px;
     background:var(--navy-deep);
     border-radius:30px;
@@ -100,11 +102,20 @@
     color:var(--paper);
     opacity:0.7;
     line-height:1;
-    display:inline-flex;
+    display:flex;
     align-items:center;
+    height:24px;
   }
-  .pause-setting .mode-toggle{ margin-top:0; display:inline-flex; align-items:center; }
-  .pause-setting .mode-toggle button{ padding:5px 12px; font-size:10px; line-height:1; }
+  .pause-setting .mode-toggle{ margin-top:0; display:flex; align-items:center; height:24px; }
+  .pause-setting .mode-toggle button{
+    padding:0 12px;
+    font-size:10px;
+    line-height:1;
+    height:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
   .game-pause-btn{
     position:absolute;
     bottom:3px;
@@ -348,8 +359,9 @@
     .mode-toggle{ flex-wrap:wrap; justify-content:center; max-width:100%; margin-top:6px !important; gap:4px; padding:2px; }
     .mode-toggle button{ font-size:9.5px; padding:7px 9px; min-height:30px; letter-spacing:0.03em; }
     .pause-setting{ bottom:8px; left:8px; padding:3px 8px 3px 10px; gap:5px; }
-    .pause-setting span{ font-size:8px; }
-    .pause-setting .mode-toggle button{ padding:4px 9px; font-size:9px; }
+    .pause-setting span{ font-size:8px; height:20px; }
+    .pause-setting .mode-toggle{ height:20px; }
+    .pause-setting .mode-toggle button{ padding:0 9px; font-size:9px; height:20px; }
     .card{ padding:16px 14px 14px; }
     .row-top{ font-size:12px; }
     .flag-frame{ width:52%; }
