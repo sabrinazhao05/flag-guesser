@@ -165,6 +165,10 @@
     color:var(--paper);
     opacity:0.6;
     cursor:pointer;
+    -webkit-appearance:none;
+    appearance:none;
+    box-sizing:border-box;
+    margin:0;
   }
   .mode-toggle button.active{
     background:var(--brass);
@@ -364,11 +368,11 @@
     .pause-setting .mode-toggle button{ padding:0 9px; font-size:9px; height:20px; }
     .card{ padding:16px 14px 14px; }
     .row-top{ font-size:12px; }
-    .flag-frame{ width:52%; }
+    .flag-frame{ width:46%; }
     .flag-bar{ padding:8px 12px 10px; }
     .flag-caption{ margin-top:5px; font-size:11px; }
     .options{ grid-template-columns:1fr; gap:8px; }
-    .opt{ font-size:16px; padding:14px 12px; min-height:48px; }
+    .opt{ font-size:15px; padding:12px 10px; min-height:44px; }
     .type-input{ font-size:18px; padding:14px 14px; }
     .type-hint{ font-size:11px; }
     .stamp{ width:46px; height:46px; font-size:24px; }
@@ -1367,6 +1371,7 @@ function getMissingSelections(){
 function renderStart(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
+  document.getElementById('pauseSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
   const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? `${getPoolCountries().length} flags on ${difficulty} difficulty.` : `${roundsSetting} flags — see how many you can get right.`);
@@ -1397,6 +1402,7 @@ function renderStart(){
 function renderRound(){
   locked = false;
   document.getElementById('masthead').style.display = 'none';
+  document.getElementById('pauseSetting').style.display = 'none';
   document.body.classList.add('playing'); document.documentElement.classList.add('locked');
   const country = infiniteMode ? nextCountry() : deck[round];
   const flagBar = document.getElementById('flagBar');
@@ -1581,6 +1587,7 @@ function missedRow(country){
 function renderEnd(missedCountry){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
+  document.getElementById('pauseSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
 
