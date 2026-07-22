@@ -1681,7 +1681,7 @@ function renderVersusMenu(){
         <input type="text" class="type-input" id="joinPinInput" placeholder="Enter room PIN" maxlength="4" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <button class="next-btn" id="joinRoomBtn">Join a room</button>
-      <p id="versusStatusMsg" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-top:14px;"></p>
+      <p id="versusStatusMsg" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-top:14px;">${attemptedStart && getMissingSelections().length ? 'Please select ' + getMissingSelections().join(', ') + ' before starting.' : ''}</p>
       <button class="next-btn" id="versusCancelBtn" style="display:none; margin-top:10px;">Cancel</button>
     </div>
   `;
@@ -1691,10 +1691,24 @@ function renderVersusMenu(){
   });
 
   document.getElementById('createRoomBtn').onclick = () => {
+    const missing = getMissingSelections();
+    if(missing.length){
+      attemptedStart = true;
+      setVersusStatus('Please select ' + missing.join(', ') + ' before starting.');
+      return;
+    }
+    attemptedStart = false;
     versusName = document.getElementById('versusName').value.trim() || 'Player 1';
     createVersusRoom();
   };
   document.getElementById('joinRoomBtn').onclick = () => {
+    const missing = getMissingSelections();
+    if(missing.length){
+      attemptedStart = true;
+      setVersusStatus('Please select ' + missing.join(', ') + ' before starting.');
+      return;
+    }
+    attemptedStart = false;
     versusName = document.getElementById('versusName').value.trim() || 'Player 2';
     const pin = document.getElementById('joinPinInput').value.trim();
     if(pin.length !== 4){ alert('Enter the 4-digit room PIN.'); return; }
@@ -2356,9 +2370,10 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if(e.key !== 'Escape') return;
+  if(isPaused){ resumeGame(); return; }
   if(!pauseButtonEnabled) return;
   if(!gameStarted || playMode !== 'solo') return;
-  if(isPaused) resumeGame(); else pauseGame();
+  pauseGame();
 });
 
 if(window.visualViewport){
