@@ -27,7 +27,7 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
-  html{ height:100%; }
+  html{ height:100%; background-color:var(--navy-deep); background:var(--navy-deep); }
   html.locked, html.locked body{
     position:fixed;
     inset:0;
@@ -38,6 +38,8 @@
   }
   body{
     min-height:100vh;
+    min-height:100dvh;
+    background-color:var(--navy-deep);
     background:
       repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 64px),
       repeating-linear-gradient(90deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 64px),
