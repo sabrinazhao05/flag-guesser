@@ -1407,7 +1407,7 @@ function renderRound(){
   } else {
     bodyHtml = `
       <div class="type-wrap">
-        <input type="text" class="type-input" id="typeInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the country name">
+        <input type="text" class="type-input" id="typeInput" name="flag-guess-field" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the country">
         <div class="type-hint">press enter to lock in your answer</div>
       </div>
     `;
@@ -2016,7 +2016,7 @@ function renderVersusRound(){
   } else {
     bodyHtml = `
       <div class="type-wrap">
-        <input type="text" class="type-input" id="typeInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the country name">
+        <input type="text" class="type-input" id="typeInput" name="flag-guess-field" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the country">
         <div class="type-hint">press enter to lock in your answer</div>
       </div>
     `;
