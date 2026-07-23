@@ -1407,7 +1407,9 @@ function renderRound(){
   } else {
     bodyHtml = `
       <div class="type-wrap">
-        <input type="text" class="type-input" id="typeInput" name="flag-guess-field" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the country">
+        <form autocomplete="off" onsubmit="return false;">
+        <input type="text" class="type-input" id="typeInput" name="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Enter your answer">
+        </form>
         <div class="type-hint">press enter to lock in your answer</div>
       </div>
     `;
@@ -2016,7 +2018,9 @@ function renderVersusRound(){
   } else {
     bodyHtml = `
       <div class="type-wrap">
-        <input type="text" class="type-input" id="typeInput" name="flag-guess-field" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the country">
+        <form autocomplete="off" onsubmit="return false;">
+        <input type="text" class="type-input" id="typeInput" name="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Enter your answer">
+        </form>
         <div class="type-hint">press enter to lock in your answer</div>
       </div>
     `;
