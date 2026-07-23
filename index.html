@@ -1489,8 +1489,13 @@ function renderRound(){
         resolveRound(false, country, null, null, true);
       } else {
         const input = document.getElementById('typeInput');
-        if(input){ input.value = country.n; input.classList.add('bad'); input.disabled = true; }
-        resolveRound(false, country, null, input, true);
+        const ok = input ? isCorrectGuess(input.value, country) : false;
+        if(input){
+          input.value = ok ? ((input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n) : country.n;
+          input.classList.add(ok ? 'good' : 'bad');
+          input.disabled = true;
+        }
+        resolveRound(ok, country, null, input, !ok);
       }
     });
   }
@@ -2092,6 +2097,21 @@ function renderVersusRound(){
     const elapsed = (Date.now() - startedAt) / 1000;
     const remaining = Math.max(0.1, gTime - elapsed);
     startTimer(gTime, () => {
+      if(versusLocked) return;
+      if(gMode === 'type'){
+        const input = document.getElementById('typeInput');
+        const ok = input ? isCorrectGuess(input.value, country) : false;
+        if(ok){
+          versusLocked = true;
+          if(input){
+            input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
+            input.classList.add('good');
+            input.disabled = true;
+          }
+          attemptVersusClaim(true);
+          return;
+        }
+      }
       if(versusRole === 'host'){
         registerVersusWinner('none', 'timeout');
       } else {
