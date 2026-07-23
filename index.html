@@ -1469,15 +1469,21 @@ function renderRound(){
     });
     lockScroll();
     [0,50,100,150,250,350,500].forEach(delay => setTimeout(lockScroll, delay));
+    function submitTypedAnswer(){
+      if(locked) return;
+      if(!input.value.trim()) return;
+      const ok = isCorrectGuess(input.value, country);
+      if(ok) input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
+      input.classList.add(ok ? 'good' : 'bad');
+      resolveRound(ok, country, null, input);
+    }
     input.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' && !locked){
-        if(!input.value.trim()) return;
-        const ok = isCorrectGuess(input.value, country);
-        if(ok) input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
-        input.classList.add(ok ? 'good' : 'bad');
-        resolveRound(ok, country, null, input);
-      }
+      if(e.key === 'Enter') submitTypedAnswer();
     });
+    const typeForm = input.closest('form');
+    if(typeForm){
+      typeForm.addEventListener('submit', (e) => { e.preventDefault(); submitTypedAnswer(); });
+    }
   }
 
   if(timeSetting !== 'infinite'){
@@ -2079,21 +2085,27 @@ function renderVersusRound(){
   } else {
     const input = document.getElementById('typeInput');
     input.focus();
-    input.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' && !versusLocked){
-        if(!input.value.trim()) return;
-        versusLocked = true;
-        input.disabled = true;
-        const ok = isCorrectGuess(input.value, country);
-        if(ok){
-          input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
-          input.classList.add('good');
-        } else {
-          input.classList.add('bad');
-        }
-        attemptVersusClaim(ok);
+    function submitVersusAnswer(){
+      if(versusLocked) return;
+      if(!input.value.trim()) return;
+      versusLocked = true;
+      input.disabled = true;
+      const ok = isCorrectGuess(input.value, country);
+      if(ok){
+        input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
+        input.classList.add('good');
+      } else {
+        input.classList.add('bad');
       }
+      attemptVersusClaim(ok);
+    }
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') submitVersusAnswer();
     });
+    const versusTypeForm = input.closest('form');
+    if(versusTypeForm){
+      versusTypeForm.addEventListener('submit', (e) => { e.preventDefault(); submitVersusAnswer(); });
+    }
   }
 
   if(gTime !== 'infinite'){
