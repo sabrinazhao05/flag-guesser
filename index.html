@@ -1484,6 +1484,9 @@ function renderRound(){
     if(typeForm){
       typeForm.addEventListener('submit', (e) => { e.preventDefault(); submitTypedAnswer(); });
     }
+    input.addEventListener('blur', () => {
+      if(!locked && input.value.trim()) submitTypedAnswer();
+    });
   }
 
   if(timeSetting !== 'infinite'){
@@ -2106,6 +2109,9 @@ function renderVersusRound(){
     if(versusTypeForm){
       versusTypeForm.addEventListener('submit', (e) => { e.preventDefault(); submitVersusAnswer(); });
     }
+    input.addEventListener('blur', () => {
+      if(!versusLocked && input.value.trim()) submitVersusAnswer();
+    });
   }
 
   if(gTime !== 'infinite'){
