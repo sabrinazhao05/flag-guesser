@@ -1370,20 +1370,22 @@ function renderStart(){
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
   const missingNow = attemptedStart ? getMissingSelections() : [];
-  const isLeaderboardRun = !infiniteMode;
+  const isLeaderboardRun = roundsSetting === 'all' && !infiniteMode && mode === 'type';
   card.innerHTML = `
     <div class="start">
       ${infiniteMode && sessionBest ? `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);">session best streak: ${sessionBest}</p>` : ''}
-      <input type="text" class="type-input" id="playerNameInput" placeholder="Enter your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${playerName ? playerName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
-      ${isLeaderboardRun ? `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-bottom:14px;">Get a perfect score to post your time to the leaderboard.</p>` : ''}
+      ${isLeaderboardRun ? `<input type="text" class="type-input" id="playerNameInput" placeholder="Enter your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${playerName ? playerName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">` : ''}
+      ${(roundsSetting === 'all' && !infiniteMode) ? (mode === 'type' ? `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-bottom:14px;">Get a perfect score to post your time to the leaderboard.</p>` : `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-bottom:14px;">Switch to Type Answer mode to compete for the leaderboard.</p>`) : ''}
       <button class="begin-btn" id="beginBtn">Start guessing</button>
       <p id="startWarning" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--crimson);margin-top:12px;">${missingNow.length ? 'Please select ' + missingNow.join(', ') + ' before starting.' : ''}</p>
       <button class="next-btn" id="viewLeaderboardBtn" style="margin-top:14px;">View leaderboard</button>
     </div>
   `;
-  document.getElementById('playerNameInput').addEventListener('input', (e) => {
-    playerName = e.target.value;
-  });
+  if(isLeaderboardRun){
+    document.getElementById('playerNameInput').addEventListener('input', (e) => {
+      playerName = e.target.value;
+    });
+  }
   document.getElementById('viewLeaderboardBtn').onclick = () => { renderLeaderboard(); };
   document.getElementById('beginBtn').onclick = () => {
     const missing = getMissingSelections();
@@ -2453,10 +2455,23 @@ document.getElementById('lengthToggle').addEventListener('click', (e) => {
   if(!infiniteMode){ roundsSetting = val === 'all' ? 'all' : parseInt(val, 10); }
   lengthChosen = true;
   document.getElementById('lengthToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
+  updateDifficultyVisibility();
   stopTimer();
   gameStarted = false;
   if(playMode === 'versus'){ leaveVersusRoom(); renderVersusMenu(); } else { renderStart(); }
 });
+
+function updateDifficultyVisibility(){
+  const diffToggle = document.getElementById('difficultyToggle');
+  if(!diffToggle) return;
+  if(roundsSetting === 'all' && !infiniteMode){
+    diffToggle.style.display = 'none';
+    difficulty = 'hard';
+    difficultyChosen = true;
+  } else {
+    diffToggle.style.display = '';
+  }
+}
 
 document.getElementById('difficultyToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-difficulty]');
@@ -2531,6 +2546,7 @@ if(window.visualViewport){
   });
 }
 
+updateDifficultyVisibility();
 renderStart();
 </script>
 </body>
