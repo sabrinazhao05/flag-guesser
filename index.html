@@ -1167,6 +1167,9 @@ let streak = 0;
 let locked = false, mode = 'choice', timeSetting = 10, infiniteMode = false, difficulty = 'medium', timerId = null, timeLeft = 0, gameStarted = false;
 let pauseButtonEnabled = false, isPaused = false;
 let modeChosen = false, timeChosen = false, lengthChosen = false, difficultyChosen = false;
+const LEADERBOARD_API = 'https://flat-sun-1e1e.sabrinazhao8888.workers.dev';
+let playerName = '';
+let allFlagsStartTime = null;
 let attemptedStart = false;
 
 function shuffle(arr){
@@ -1366,16 +1369,22 @@ function renderStart(){
   document.getElementById('pauseSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
-  const lengthText = infiniteMode ? 'Flags keep coming, one after another, until you miss one.' : (roundsSetting === 'all' ? `${getPoolCountries().length} flags on ${difficulty} difficulty.` : `${roundsSetting} flags — see how many you can get right.`);
   const missingNow = attemptedStart ? getMissingSelections() : [];
+  const isLeaderboardRun = !infiniteMode;
   card.innerHTML = `
     <div class="start">
-      <p>${lengthText}<br>${mode==='choice' ? 'Pick the correct country from four options.' : 'Type the country name.'}<br>${timeSetting === 'infinite' ? 'No timer' : `You get ${timeSetting} seconds`} per flag, on ${difficulty} difficulty.</p>
-      ${infiniteMode && sessionBest ? `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:-8px;">session best streak: ${sessionBest}</p>` : ''}
+      ${infiniteMode && sessionBest ? `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);">session best streak: ${sessionBest}</p>` : ''}
+      <input type="text" class="type-input" id="playerNameInput" placeholder="Enter your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${playerName ? playerName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
+      ${isLeaderboardRun ? `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-bottom:14px;">Get a perfect score to post your time to the leaderboard.</p>` : ''}
       <button class="begin-btn" id="beginBtn">Start guessing</button>
       <p id="startWarning" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--crimson);margin-top:12px;">${missingNow.length ? 'Please select ' + missingNow.join(', ') + ' before starting.' : ''}</p>
+      <button class="next-btn" id="viewLeaderboardBtn" style="margin-top:14px;">View leaderboard</button>
     </div>
   `;
+  document.getElementById('playerNameInput').addEventListener('input', (e) => {
+    playerName = e.target.value;
+  });
+  document.getElementById('viewLeaderboardBtn').onclick = () => { renderLeaderboard(); };
   document.getElementById('beginBtn').onclick = () => {
     const missing = getMissingSelections();
     if(missing.length){
@@ -1386,7 +1395,7 @@ function renderStart(){
     attemptedStart = false;
     gameStarted = true;
     streak = 0;
-    if(infiniteMode){ refillPool(); } else { buildDeck(); }
+    if(infiniteMode){ refillPool(); allFlagsStartTime = null; } else { buildDeck(); allFlagsStartTime = isLeaderboardRun ? Date.now() : null; }
     renderRound();
   };
 }
@@ -1547,11 +1556,18 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
       bestStreak = Math.max(bestStreak, streak);
       setTimeout(() => {
         round++;
-        if(round >= ROUNDS){ renderEnd(); } else { renderRound(); }
+        if(round >= ROUNDS){
+          if(allFlagsStartTime){
+            const elapsedSec = (Date.now() - allFlagsStartTime) / 1000;
+            submitLeaderboardTime(elapsedSec);
+          }
+          renderEnd();
+        } else { renderRound(); }
       }, 900);
     } else {
       streak = 0;
       missed.push(country);
+      allFlagsStartTime = null;
       if(roundsSetting === 'all'){
         setTimeout(() => { renderEnd(); }, 1300);
       } else {
@@ -1635,7 +1651,9 @@ function renderEnd(missedCountry){
           <div><span class="num">${bestStreak}</span><span class="lbl">Best streak</span></div>
         </div>
         ${missed.length ? `<div class="missed" id="missedList"></div>` : `<div class="missed">Clean record — every flag identified.</div>`}
+        ${score === ROUNDS ? `<p id="leaderboardStatus" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:14px;">Submitting your time…</p>` : ''}
         <button class="next-btn" id="restartBtn">Play again</button>
+        <button class="next-btn" id="viewLeaderboardBtn2" style="margin-top:10px;">View leaderboard</button>
       </div>
     `;
     if(missed.length){
@@ -1643,7 +1661,79 @@ function renderEnd(missedCountry){
       missed.forEach(m => list.appendChild(missedRow(m)));
     }
     document.getElementById('restartBtn').onclick = () => { buildDeck(); streak = 0; renderRound(); };
+    document.getElementById('viewLeaderboardBtn2').onclick = () => { renderLeaderboard(); };
   }
+}
+
+function submitLeaderboardTime(elapsedSec){
+  const statusEl = () => document.getElementById('leaderboardStatus');
+  fetch(LEADERBOARD_API + '/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      category: 'all',
+      name: (playerName || 'Anonymous').trim() || 'Anonymous',
+      time: elapsedSec
+    })
+  }).then(res => {
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(data => {
+    const el = statusEl();
+    if(el){
+      if(data && data.ok){
+        el.textContent = `Time submitted: ${elapsedSec.toFixed(1)}s (rank #${data.rank})`;
+      } else {
+        el.textContent = `Time recorded: ${elapsedSec.toFixed(1)}s`;
+      }
+    }
+  }).catch((err) => {
+    const el = statusEl();
+    if(el) el.textContent = `Couldn't reach the leaderboard (${err && err.message ? err.message : err}) — your time: ${elapsedSec.toFixed(1)}s`;
+  });
+}
+
+function renderLeaderboard(){
+  document.getElementById('flagBar').style.display = 'none';
+  document.getElementById('masthead').style.display = 'block';
+  document.getElementById('pauseSetting').style.display = 'flex';
+  document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
+  const card = document.getElementById('card');
+  card.innerHTML = `
+    <div class="end">
+      <p class="flag-caption" style="margin-bottom:2px;">leaderboard</p>
+      <div class="rank" style="font-size:22px;">Fastest full clears</div>
+      <div class="rank-sub">All flags, every difficulty combined</div>
+      <div class="missed" id="leaderboardList" style="margin:18px 0; text-align:left;">
+        <p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark); text-align:center;">Loading…</p>
+      </div>
+      <button class="next-btn" id="backFromLeaderboardBtn">Back</button>
+    </div>
+  `;
+  document.getElementById('backFromLeaderboardBtn').onclick = () => { renderStart(); };
+  fetch(LEADERBOARD_API + '/leaderboard?category=all')
+    .then(res => {
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(list => {
+      const el = document.getElementById('leaderboardList');
+      if(!el) return;
+      if(!list || !list.length){
+        el.innerHTML = `<p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark); text-align:center;">No times posted yet — be the first!</p>`;
+        return;
+      }
+      el.innerHTML = list.slice(0, 25).map((entry, i) => `
+        <div class="row">
+          <span class="name">${i+1}. ${(entry.name || 'Anonymous').replace(/</g,'&lt;')}</span>
+          <span style="font-family:'JetBrains Mono',monospace; color:var(--teal-dark);">${entry.time.toFixed(1)}s</span>
+        </div>
+      `).join('');
+    })
+    .catch((err) => {
+      const el = document.getElementById('leaderboardList');
+      if(el) el.innerHTML = `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--crimson); text-align:center;">Couldn't load the leaderboard.<br>Error: ${(err && err.message ? err.message : String(err)).replace(/</g,'&lt;')}</p>`;
+    });
 }
 
 /* ---------- versus mode (PeerJS — direct browser-to-browser, no account needed) ---------- */
@@ -1705,7 +1795,7 @@ function renderVersusMenu(){
   card.innerHTML = `
     <div class="start">
       <p>Play the same flags as a friend on another device. First to answer each round scores the point.</p>
-      <input type="text" class="type-input" id="versusName" placeholder="Your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${versusName ? versusName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
+      <input type="text" class="type-input" id="playerNameInput" placeholder="Enter your name" maxlength="16" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${playerName ? playerName.replace(/"/g,'&quot;') : ''}" style="margin-bottom:14px;">
       <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin:-4px 0 14px;">${infiniteMode ? 'Infinite match' : (roundsSetting === 'all' ? getPoolCountries().length + ' flags' : roundsSetting + ' flags')} — set via the length toggle above</p>
       <button class="begin-btn" id="createRoomBtn" style="margin-bottom:10px;">Create a room</button>
       <div class="type-wrap" style="margin-bottom:10px;">
@@ -1716,9 +1806,8 @@ function renderVersusMenu(){
       <button class="next-btn" id="versusCancelBtn" style="display:none; margin-top:10px;">Cancel</button>
     </div>
   `;
-
-  document.getElementById('versusName').addEventListener('input', (e) => {
-    versusName = e.target.value;
+  document.getElementById('playerNameInput').addEventListener('input', (e) => {
+    playerName = e.target.value;
   });
 
   document.getElementById('createRoomBtn').onclick = () => {
@@ -1729,7 +1818,7 @@ function renderVersusMenu(){
       return;
     }
     attemptedStart = false;
-    versusName = document.getElementById('versusName').value.trim() || 'Player 1';
+    versusName = playerName.trim() || 'Player 1';
     createVersusRoom();
   };
   document.getElementById('joinRoomBtn').onclick = () => {
@@ -1740,7 +1829,7 @@ function renderVersusMenu(){
       return;
     }
     attemptedStart = false;
-    versusName = document.getElementById('versusName').value.trim() || 'Player 2';
+    versusName = playerName.trim() || 'Player 2';
     const pin = document.getElementById('joinPinInput').value.trim();
     if(pin.length !== 4){ alert('Enter the 4-digit room PIN.'); return; }
     joinVersusRoom(pin);
