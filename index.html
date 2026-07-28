@@ -1515,7 +1515,7 @@ function renderRound(){
         if(input){
           input.value = ok ? ((input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n) : country.n;
           input.classList.add(ok ? 'good' : 'bad');
-          input.disabled = true;
+          input.readOnly = true;
         }
         resolveRound(ok, country, null, input, !ok);
       }
@@ -1535,7 +1535,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     });
     if(btnEl && !isRight) btnEl.classList.add('wrong');
   } else if(inputEl){
-    inputEl.disabled = true;
+    inputEl.readOnly = true;
     inputEl.classList.remove('good','bad');
     inputEl.classList.add(isRight ? 'good' : 'bad');
   }
@@ -2183,7 +2183,7 @@ function renderVersusRound(){
       if(versusLocked) return;
       if(!input.value.trim()) return;
       versusLocked = true;
-      input.disabled = true;
+      input.readOnly = true;
       const ok = isCorrectGuess(input.value, country);
       if(ok){
         input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
@@ -2219,7 +2219,7 @@ function renderVersusRound(){
           if(input){
             input.value = (input.value === input.value.toLowerCase()) ? country.n.toLowerCase() : country.n;
             input.classList.add('good');
-            input.disabled = true;
+            input.readOnly = true;
           }
           attemptVersusClaim(true);
           return;
@@ -2269,7 +2269,7 @@ function renderVersusRoundResult(){
     if(b.textContent === country.n) b.classList.add('correct');
   });
   const input = document.getElementById('typeInput');
-  if(input) input.disabled = true;
+  if(input) input.readOnly = true;
 
   const fb = document.getElementById('feedback');
   const oppName = versusOpponentName || 'Opponent';
