@@ -1171,6 +1171,7 @@ const LEADERBOARD_API = 'https://flat-sun-1e1e.sabrinazhao8888.workers.dev';
 let playerName = '';
 let allFlagsStartTime = null;
 let attemptedStart = false;
+let roundToken = 0;
 
 function shuffle(arr){
   const a = arr.slice();
@@ -1404,6 +1405,8 @@ function renderStart(){
 
 function renderRound(){
   locked = false;
+  roundToken++;
+  const myRoundToken = roundToken;
   document.getElementById('masthead').style.display = 'none';
   document.getElementById('pauseSetting').style.display = 'none';
   document.body.classList.add('playing'); document.documentElement.classList.add('locked');
@@ -1481,6 +1484,7 @@ function renderRound(){
     lockScroll();
     [0,50,100,150,250,350,500].forEach(delay => setTimeout(lockScroll, delay));
     function submitTypedAnswer(){
+      if(roundToken !== myRoundToken) return;
       if(locked) return;
       if(!input.value.trim()) return;
       const ok = isCorrectGuess(input.value, country);
@@ -1496,7 +1500,7 @@ function renderRound(){
       typeForm.addEventListener('submit', (e) => { e.preventDefault(); submitTypedAnswer(); });
     }
     input.addEventListener('blur', () => {
-      if(!locked && input.value.trim()) submitTypedAnswer();
+      if(roundToken === myRoundToken && !locked && input.value.trim()) submitTypedAnswer();
     });
   }
 
