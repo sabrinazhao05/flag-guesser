@@ -423,6 +423,14 @@
     </div>
   </div>
 
+  <div class="pause-setting" id="timerSoundSetting" style="left:auto; right:14px;">
+    <span>Timer sound</span>
+    <div class="mode-toggle" id="timerSoundToggle">
+      <button data-sound="off" class="active">Off</button>
+      <button data-sound="on">On</button>
+    </div>
+  </div>
+
   <div class="flag-bar" id="flagBar" style="display:none;"></div>
   <div class="card" id="card"></div>
 </div>
@@ -1166,6 +1174,8 @@ let pool = [], sessionBest = 0;
 let streak = 0;
 let locked = false, mode = 'choice', timeSetting = 10, infiniteMode = false, difficulty = 'medium', timerId = null, timeLeft = 0, gameStarted = false;
 let pauseButtonEnabled = false, isPaused = false;
+let timerSoundEnabled = false;
+let lastTickSecond = null;
 let modeChosen = false, timeChosen = false, lengthChosen = false, difficultyChosen = false;
 const LEADERBOARD_API = 'https://flat-sun-1e1e.sabrinazhao8888.workers.dev';
 let playerName = '';
@@ -1289,6 +1299,33 @@ let lastTimerTotal = null;
 
 function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
 
+let sharedAudioCtx = null;
+function getAudioCtx(){
+  if(!sharedAudioCtx){
+    try{ sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; }
+  }
+  if(sharedAudioCtx.state === 'suspended'){ sharedAudioCtx.resume(); }
+  return sharedAudioCtx;
+}
+function playTone(freq, durationSec, volume){
+  if(!timerSoundEnabled) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  try{
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationSec);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + durationSec + 0.02);
+  }catch(e){}
+}
+function playTick(urgent){ playTone(urgent ? 1100 : 720, 0.08, urgent ? 0.16 : 0.11); }
+function playTimeUp(){ playTone(220, 0.35, 0.18); }
+
 function startTimer(limit, onExpire, total){
   timeLeft = limit;
   lastTimerOnExpire = onExpire;
@@ -1297,18 +1334,26 @@ function startTimer(limit, onExpire, total){
   const fill = document.getElementById('timerFill');
   const label = document.getElementById('timerLabel');
   stopTimer();
+  lastTickSecond = Math.ceil(limit);
   const startedAt = Date.now();
   timerId = setInterval(() => {
     const elapsed = (Date.now() - startedAt) / 1000;
     timeLeft = Math.max(0, limit - elapsed);
     const pct = (timeLeft/barTotal)*100;
+    const isLow = timeLeft <= barTotal*0.3;
     if(fill){
       fill.style.width = pct + '%';
-      fill.classList.toggle('low', timeLeft <= barTotal*0.3);
+      fill.classList.toggle('low', isLow);
     }
     if(label) label.textContent = Math.ceil(timeLeft) + 's';
+    const wholeSecond = Math.ceil(timeLeft);
+    if(wholeSecond !== lastTickSecond && wholeSecond >= 0){
+      lastTickSecond = wholeSecond;
+      if(wholeSecond > 0) playTick(isLow);
+    }
     if(timeLeft <= 0){
       stopTimer();
+      playTimeUp();
       onExpire();
     }
   }, 100);
@@ -1368,6 +1413,7 @@ function renderStart(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
   const missingNow = attemptedStart ? getMissingSelections() : [];
@@ -1409,6 +1455,7 @@ function renderRound(){
   const myRoundToken = roundToken;
   document.getElementById('masthead').style.display = 'none';
   document.getElementById('pauseSetting').style.display = 'none';
+  document.getElementById('timerSoundSetting').style.display = 'none';
   document.body.classList.add('playing'); document.documentElement.classList.add('locked');
   const country = infiniteMode ? nextCountry() : deck[round];
   const flagBar = document.getElementById('flagBar');
@@ -1618,6 +1665,7 @@ function renderEnd(missedCountry){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
 
@@ -1703,6 +1751,7 @@ function renderLeaderboard(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
   card.innerHTML = `
@@ -2513,6 +2562,14 @@ document.getElementById('pauseToggle').addEventListener('click', (e) => {
   if(!btn) return;
   pauseButtonEnabled = btn.dataset.pause === 'on';
   document.getElementById('pauseToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
+});
+
+document.getElementById('timerSoundToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-sound]');
+  if(!btn) return;
+  timerSoundEnabled = btn.dataset.sound === 'on';
+  document.getElementById('timerSoundToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
+  if(timerSoundEnabled){ getAudioCtx(); playTick(false); }
 });
 
 document.addEventListener('keydown', (e) => {
