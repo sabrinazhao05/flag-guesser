@@ -299,6 +299,13 @@
     60%{ opacity:1; }
     100%{ transform:rotate(-7deg) scale(1); opacity:1; }
   }
+  @keyframes milestoneFlash{
+    0%{ opacity:0; transform:scale(0.85); }
+    15%{ opacity:1; transform:scale(1.03); }
+    25%{ opacity:1; transform:scale(1); }
+    80%{ opacity:1; }
+    100%{ opacity:0; }
+  }
 
   .statbar{
     display:flex; justify-content:space-between; margin-top:14px; padding-top:14px;
@@ -409,11 +416,22 @@
       <button data-difficulty="medium">Medium</button>
       <button data-difficulty="hard">Hard</button>
     </div>
+    <div class="mode-toggle" id="continentToggle" style="margin-top:8px; flex-wrap:wrap;">
+      <button data-continent="all" class="active">All continents</button>
+      <button data-continent="Africa">Africa</button>
+      <button data-continent="Asia">Asia</button>
+      <button data-continent="Europe">Europe</button>
+      <button data-continent="North America">N. America</button>
+      <button data-continent="South America">S. America</button>
+      <button data-continent="Oceania">Oceania</button>
+    </div>
     <div class="mode-toggle" id="playModeToggle" style="margin-top:8px;">
       <button data-play="solo">Solo</button>
       <button data-play="versus">Versus</button>
     </div>
   </div>
+
+  <button id="helpBtn" title="Keyboard shortcuts" style="position:fixed; top:14px; right:14px; z-index:60; width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.3); background:var(--navy-deep); color:var(--paper); font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; cursor:pointer;">?</button>
 
   <div class="pause-setting" id="pauseSetting">
     <span>Pause button</span>
@@ -1177,6 +1195,19 @@ let pauseButtonEnabled = false, isPaused = false;
 let timerSoundEnabled = false;
 let lastTickSecond = null;
 let modeChosen = false, timeChosen = false, lengthChosen = false, difficultyChosen = false;
+let selectedContinent = 'all';
+let isDailyChallenge = false;
+let lastMilestoneStreak = 0;
+const MILESTONES = [5, 10, 25, 50, 100];
+let achievements = {};
+try{ achievements = JSON.parse(localStorage.getItem('flagGuesserAchievements') || '{}'); }catch(e){ achievements = {}; }
+function saveAchievements(){ try{ localStorage.setItem('flagGuesserAchievements', JSON.stringify(achievements)); }catch(e){} }
+function unlockAchievement(key, label){
+  if(achievements[key]) return false;
+  achievements[key] = { label, date: Date.now() };
+  saveAchievements();
+  return true;
+}
 const LEADERBOARD_API = 'https://flat-sun-1e1e.sabrinazhao8888.workers.dev';
 let playerName = '';
 let allFlagsStartTime = null;
@@ -1261,9 +1292,14 @@ function isCorrectGuess(typed, country){
 }
 
 function getPoolCountries(){
-  if(difficulty === 'easy') return COUNTRIES.filter(c => EASY_SET.includes(c.n));
-  if(difficulty === 'medium') return COUNTRIES.filter(c => MEDIUM_SET.includes(c.n));
-  return COUNTRIES;
+  let pool;
+  if(difficulty === 'easy') pool = COUNTRIES.filter(c => EASY_SET.includes(c.n));
+  else if(difficulty === 'medium') pool = COUNTRIES.filter(c => MEDIUM_SET.includes(c.n));
+  else pool = COUNTRIES;
+  if(selectedContinent !== 'all'){
+    pool = pool.filter(c => c.c === selectedContinent);
+  }
+  return pool;
 }
 
 function buildDeck(){
@@ -1325,6 +1361,31 @@ function playTone(freq, durationSec, volume){
 }
 function playTick(urgent){ playTone(urgent ? 1100 : 720, 0.08, urgent ? 0.16 : 0.11); }
 function playTimeUp(){ playTone(220, 0.35, 0.18); }
+
+function playMilestoneChime(){
+  if(!timerSoundEnabled) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  [523, 659, 784].forEach((freq, i) => {
+    setTimeout(() => playTone(freq, 0.25, 0.13), i*90);
+  });
+}
+
+function checkStreakMilestone(currentStreak){
+  if(currentStreak === lastMilestoneStreak) return;
+  if(!MILESTONES.includes(currentStreak)) return;
+  lastMilestoneStreak = currentStreak;
+  playMilestoneChime();
+  const flagBar = document.getElementById('flagBar');
+  if(flagBar){
+    const flash = document.createElement('div');
+    flash.textContent = `${currentStreak} in a row!`;
+    flash.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(198,154,61,0.95); color:var(--navy-deep); font-family:\'Fraunces\',serif; font-weight:700; font-size:22px; border-radius:6px; z-index:30; animation:milestoneFlash 1.1s ease forwards;';
+    flagBar.style.position = 'relative';
+    flagBar.appendChild(flash);
+    setTimeout(() => flash.remove(), 1100);
+  }
+}
 
 function startTimer(limit, onExpire, total){
   timeLeft = limit;
@@ -1443,7 +1504,7 @@ function renderStart(){
     }
     attemptedStart = false;
     gameStarted = true;
-    streak = 0;
+    streak = 0; lastMilestoneStreak = 0;
     if(infiniteMode){ refillPool(); allFlagsStartTime = null; } else { buildDeck(); allFlagsStartTime = isLeaderboardRun ? Date.now() : null; }
     renderRound();
   };
@@ -1598,6 +1659,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     if(isRight){
       streak++;
       sessionBest = Math.max(sessionBest, streak);
+      checkStreakMilestone(streak);
       setTimeout(() => { renderRound(); }, 900);
     } else {
       sessionBest = Math.max(sessionBest, streak);
@@ -1607,9 +1669,11 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     if(isRight){
       score++; streak++;
       bestStreak = Math.max(bestStreak, streak);
+      checkStreakMilestone(streak);
       setTimeout(() => {
         round++;
         if(round >= ROUNDS){
+          if(reviewModeActive){ endMissedReview(); return; }
           if(allFlagsStartTime){
             const elapsedSec = (Date.now() - allFlagsStartTime) / 1000;
             submitLeaderboardTime(elapsedSec);
@@ -1618,11 +1682,11 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
         } else { renderRound(); }
       }, 900);
     } else {
-      streak = 0;
+      streak = 0; lastMilestoneStreak = 0;
       missed.push(country);
       allFlagsStartTime = null;
-      if(roundsSetting === 'all'){
-        setTimeout(() => { renderEnd(); }, 1300);
+      if(reviewModeActive || roundsSetting === 'all'){
+        setTimeout(() => { if(reviewModeActive){ endMissedReview(); } else { renderEnd(); } }, 1300);
       } else {
         setTimeout(() => {
           round++;
@@ -1671,6 +1735,10 @@ function renderEnd(missedCountry){
 
   if(infiniteMode){
     const [rank, sub] = rankForStreak(streak);
+    if(streak >= 10) unlockAchievement('streak10', 'Reached a 10-flag streak');
+    if(streak >= 25) unlockAchievement('streak25', 'Reached a 25-flag streak');
+    if(streak >= 50) unlockAchievement('streak50', 'Reached a 50-flag streak');
+    if(streak >= 100) unlockAchievement('streak100', 'Reached a 100-flag streak');
     card.innerHTML = `
       <div class="end">
         <p class="flag-caption" style="margin-bottom:2px;">final review</p>
@@ -1683,6 +1751,8 @@ function renderEnd(missedCountry){
         </div>
         <div class="missed" id="missedList"></div>
         <button class="next-btn" id="restartBtn">Play again</button>
+        <button class="next-btn" id="shareScoreBtn" style="margin-top:10px;">Share score</button>
+        <button class="next-btn" id="achievementsBtn" style="margin-top:10px;">Achievements</button>
       </div>
     `;
     const slot = document.getElementById('missedThumbSlot');
@@ -1690,10 +1760,18 @@ function renderEnd(missedCountry){
     slot.style.fontSize = '15px';
     slot.textContent = missedCountry.n;
     document.getElementById('missedList').appendChild(missedRow(missedCountry));
-    document.getElementById('restartBtn').onclick = () => { streak = 0; refillPool(); renderRound(); };
+    document.getElementById('restartBtn').onclick = () => { streak = 0; lastMilestoneStreak = 0; refillPool(); renderRound(); };
+    document.getElementById('shareScoreBtn').onclick = () => shareScore(`I got a streak of ${streak} flags in a row on Flag Guesser! Can you beat it?`);
+    document.getElementById('achievementsBtn').onclick = () => renderAchievements();
   } else {
     const pct = Math.round(score/ROUNDS*100);
     const [rank, sub] = rankForPct(pct);
+    if(pct === 100){
+      if([10,25,50].includes(ROUNDS)) unlockAchievement('perfect'+ROUNDS, `Perfect ${ROUNDS}/${ROUNDS} clear`);
+      if(difficulty === 'hard' && roundsSetting === 'all' && mode === 'type'){
+        unlockAchievement('flagMaster', 'Flag Master — perfect clear on Hard, all 195 flags, typed');
+      }
+    }
     card.innerHTML = `
       <div class="end">
         <p class="flag-caption" style="margin-bottom:2px;">final review</p>
@@ -1707,16 +1785,67 @@ function renderEnd(missedCountry){
         ${missed.length ? `<div class="missed" id="missedList"></div>` : `<div class="missed">Clean record — every flag identified.</div>`}
         ${score === ROUNDS ? `<p id="leaderboardStatus" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:14px;">Submitting your time…</p>` : ''}
         <button class="next-btn" id="restartBtn">Play again</button>
+        ${missed.length ? `<button class="next-btn" id="reviewMissedBtn" style="margin-top:10px;">Review missed flags</button>` : ''}
         <button class="next-btn" id="viewLeaderboardBtn2" style="margin-top:10px;">View leaderboard</button>
+        <button class="next-btn" id="shareScoreBtn" style="margin-top:10px;">Share score</button>
+        <button class="next-btn" id="achievementsBtn" style="margin-top:10px;">Achievements</button>
       </div>
     `;
     if(missed.length){
       const list = document.getElementById('missedList');
       missed.forEach(m => list.appendChild(missedRow(m)));
+      document.getElementById('reviewMissedBtn').onclick = () => startMissedReview();
     }
-    document.getElementById('restartBtn').onclick = () => { buildDeck(); streak = 0; renderRound(); };
+    document.getElementById('restartBtn').onclick = () => { buildDeck(); streak = 0; lastMilestoneStreak = 0; renderRound(); };
     document.getElementById('viewLeaderboardBtn2').onclick = () => { renderLeaderboard(); };
+    document.getElementById('shareScoreBtn').onclick = () => shareScore(`I scored ${score}/${ROUNDS} (${pct}%) on ${difficulty} difficulty in Flag Guesser!`);
+    document.getElementById('achievementsBtn').onclick = () => renderAchievements();
   }
+}
+
+function shareScore(text){
+  const shareData = { title: 'Flag Guesser', text: text + ' ' };
+  if(navigator.share){
+    navigator.share(shareData).catch(() => {});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('shareScoreBtn');
+      if(btn){ const old = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = old; }, 1500); }
+    }).catch(() => {});
+  }
+}
+
+let reviewModeActive = false;
+let reviewSavedState = null;
+
+function startMissedReview(){
+  reviewModeActive = true;
+  allFlagsStartTime = null;
+  reviewSavedState = { deck: deck.slice(), round, score, streak, ROUNDS, missed: missed.slice() };
+  deck = missed.slice();
+  ROUNDS = deck.length;
+  round = 0; score = 0; streak = 0; missed = [];
+  renderRound();
+}
+
+function endMissedReview(){
+  const card = document.getElementById('card');
+  document.getElementById('flagBar').style.display = 'none';
+  document.getElementById('masthead').style.display = 'block';
+  document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('timerSoundSetting').style.display = 'flex';
+  document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
+  card.innerHTML = `
+    <div class="end">
+      <p class="flag-caption" style="margin-bottom:2px;">review complete</p>
+      <div class="rank">${score}/${ROUNDS} on review</div>
+      <div class="rank-sub">Great practice — those should stick better now.</div>
+      <button class="next-btn" id="backToMenuBtn">Back to menu</button>
+    </div>
+  `;
+  reviewModeActive = false;
+  reviewSavedState = null;
+  document.getElementById('backToMenuBtn').onclick = () => { renderStart(); };
 }
 
 function submitLeaderboardTime(elapsedSec){
@@ -1789,6 +1918,48 @@ function renderLeaderboard(){
       const el = document.getElementById('leaderboardList');
       if(el) el.innerHTML = `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--crimson); text-align:center;">Couldn't load the leaderboard.<br>Error: ${(err && err.message ? err.message : String(err)).replace(/</g,'&lt;')}</p>`;
     });
+}
+
+const ACHIEVEMENT_CATALOG = [
+  { key: 'perfect10', label: 'Perfect 10/10' },
+  { key: 'perfect25', label: 'Perfect 25/25' },
+  { key: 'perfect50', label: 'Perfect 50/50' },
+  { key: 'flagMaster', label: 'Flag Master — perfect Hard, all 195, typed' },
+  { key: 'streak10', label: '10-flag streak' },
+  { key: 'streak25', label: '25-flag streak' },
+  { key: 'streak50', label: '50-flag streak' },
+  { key: 'streak100', label: '100-flag streak' },
+  { key: 'versusWin', label: 'First Versus win' },
+  { key: 'versusWin5', label: '5 Versus wins' },
+  { key: 'dailyPlayed', label: 'Completed a Daily Challenge' }
+];
+
+function renderAchievements(){
+  document.getElementById('flagBar').style.display = 'none';
+  document.getElementById('masthead').style.display = 'block';
+  document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('timerSoundSetting').style.display = 'flex';
+  document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
+  const card = document.getElementById('card');
+  const unlockedCount = ACHIEVEMENT_CATALOG.filter(a => achievements[a.key]).length;
+  card.innerHTML = `
+    <div class="end">
+      <p class="flag-caption" style="margin-bottom:2px;">achievements</p>
+      <div class="rank" style="font-size:22px;">${unlockedCount} / ${ACHIEVEMENT_CATALOG.length} unlocked</div>
+      <div class="rank-sub">Stored on this device</div>
+      <div class="missed" id="achievementsList" style="margin:18px 0; text-align:left;"></div>
+      <button class="next-btn" id="backFromAchievementsBtn">Back</button>
+    </div>
+  `;
+  const list = document.getElementById('achievementsList');
+  ACHIEVEMENT_CATALOG.forEach(a => {
+    const unlocked = !!achievements[a.key];
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="name" style="opacity:${unlocked ? '1' : '0.4'};">${unlocked ? '&#127942;' : '&#128274;'} ${a.label}</span><span style="color:${unlocked ? 'var(--teal-dark)' : 'rgba(42,35,24,0.4)'};">${unlocked ? 'Unlocked' : 'Locked'}</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById('backFromAchievementsBtn').onclick = () => { renderStart(); };
 }
 
 /* ---------- versus mode (PeerJS — direct browser-to-browser, no account needed) ---------- */
@@ -2535,6 +2706,38 @@ document.getElementById('difficultyToggle').addEventListener('click', (e) => {
   stopTimer();
   gameStarted = false;
   if(playMode === 'versus'){ leaveVersusRoom(); renderVersusMenu(); } else { renderStart(); }
+});
+
+document.getElementById('continentToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-continent]');
+  if(!btn) return;
+  selectedContinent = btn.dataset.continent;
+  document.getElementById('continentToggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b===btn));
+  stopTimer();
+  gameStarted = false;
+  if(playMode === 'versus'){ leaveVersusRoom(); renderVersusMenu(); } else { renderStart(); }
+});
+
+document.getElementById('helpBtn').addEventListener('click', () => {
+  const existing = document.getElementById('helpOverlay');
+  if(existing){ existing.remove(); return; }
+  const overlay = document.createElement('div');
+  overlay.id = 'helpOverlay';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(14,24,48,0.85); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--paper); color:var(--ink); border-radius:8px; padding:26px 24px; max-width:340px; width:100%;">
+      <p style="font-family:'Fraunces',serif; font-weight:600; font-size:19px; margin:0 0 16px;">Keyboard shortcuts</p>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:13px; line-height:2;">
+        <div><strong>Enter</strong> — submit your typed answer</div>
+        <div><strong>Escape</strong> — pause / resume (if pause button is on)</div>
+        <div><strong>Space</strong> — types normally in the answer box</div>
+      </div>
+      <button id="closeHelpBtn" style="margin-top:18px; width:100%; padding:12px; font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; background:var(--navy); color:var(--paper); border:none; border-radius:4px; cursor:pointer;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('closeHelpBtn').onclick = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
 });
 
 document.getElementById('playModeToggle').addEventListener('click', (e) => {
