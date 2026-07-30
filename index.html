@@ -170,6 +170,12 @@
     opacity:1;
     font-weight:500;
   }
+  #advancedOverlay .mode-toggle{
+    display:flex;
+    width:100%;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
   #advancedOverlay .mode-toggle button{
     color:var(--navy);
     opacity:0.7;
@@ -1223,6 +1229,29 @@ const MEDIUM_SET = EASY_SET.concat([
 let ROUNDS = 10;
 let roundsSetting = 10;
 let deck = [], round = 0, score = 0, bestStreak = 0, missed = [];
+let persistentMissed = [];
+let practiceMissedActive = false;
+try{
+  const saved = localStorage.getItem('flagGuesser_missedFlags');
+  if(saved) persistentMissed = JSON.parse(saved);
+}catch(e){ persistentMissed = []; }
+
+function savePersistentMissed(){
+  try{ localStorage.setItem('flagGuesser_missedFlags', JSON.stringify(persistentMissed)); }catch(e){}
+}
+function addToPersistentMissed(countryName){
+  if(!persistentMissed.includes(countryName)){
+    persistentMissed.push(countryName);
+    savePersistentMissed();
+  }
+}
+function removeFromPersistentMissed(countryName){
+  const idx = persistentMissed.indexOf(countryName);
+  if(idx !== -1){
+    persistentMissed.splice(idx, 1);
+    savePersistentMissed();
+  }
+}
 let pool = [], sessionBest = 0;
 let streak = 0;
 let locked = false, mode = 'choice', timeSetting = 10, infiniteMode = false, difficulty = 'medium', timerId = null, timeLeft = 0, gameStarted = false;
@@ -1392,6 +1421,20 @@ function buildDeck(){
 }
 
 function refillPool(){ pool = shuffle(getPoolCountries()); }
+
+function startPracticeMissed(){
+  if(!persistentMissed.length) return;
+  const practicePool = COUNTRIES.filter(c => persistentMissed.includes(c.n));
+  if(!practicePool.length) return;
+  practiceMissedActive = true;
+  infiniteMode = false;
+  deck = shuffle(practicePool);
+  ROUNDS = deck.length;
+  round = 0; score = 0; bestStreak = 0; streak = 0; missed = [];
+  allFlagsStartTime = null;
+  gameStarted = true;
+  renderRound();
+}
 
 let savedSettingsBeforeDaily = null;
 function startDailyChallenge(){
@@ -1688,6 +1731,7 @@ function renderStart(){
       <button class="next-btn" id="viewLeaderboardBtn" style="margin-top:14px;">View leaderboard</button>
       <button class="next-btn" id="dailyChallengeBtn" style="margin-top:10px;">${dailyResult ? `Today's result: ${dailyResult.score}/${dailyResult.total}` : "Daily Challenge"}</button>
       <button class="next-btn" id="achievementsBtn" style="margin-top:10px;">Achievements</button>
+      ${persistentMissed.length ? `<button class="next-btn" id="practiceMissedBtn" style="margin-top:10px;">Practice missed flags (${persistentMissed.length})</button>` : `<p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal-dark);margin-top:14px;">No missed flags yet — play a round to build your practice list.</p>`}
     </div>
   `;
   if(isLeaderboardRun){
@@ -1702,6 +1746,9 @@ function renderStart(){
     if(existing){ renderDailyResults(existing); return; }
     startDailyChallenge();
   };
+  if(persistentMissed.length){
+    document.getElementById('practiceMissedBtn').onclick = () => { startPracticeMissed(); };
+  }
   document.getElementById('beginBtn').onclick = () => {
     const missing = getMissingSelections();
     if(missing.length){
@@ -1711,6 +1758,7 @@ function renderStart(){
     }
     attemptedStart = false;
     gameStarted = true;
+    practiceMissedActive = false;
     streak = 0; lastMilestoneStreak = 0;
     if(infiniteMode){ refillPool(); allFlagsStartTime = null; } else { buildDeck(); allFlagsStartTime = isLeaderboardRun ? Date.now() : null; }
     renderRound();
@@ -1745,7 +1793,7 @@ function renderRound(){
     `;
   }
 
-  const leadText = infiniteMode ? `Flag ${streak+1}` : `Entry ${round+1} / ${ROUNDS}`;
+  const leadText = infiniteMode ? `Flag ${streak+1}` : (practiceMissedActive ? `Practice ${round+1} / ${ROUNDS}` : `Entry ${round+1} / ${ROUNDS}`);
   const timeDisplay = timeSetting === 'infinite' ? '<span style="font-size:24px; display:inline-block; transform:scaleX(1.3);">&#8734;</span>' : timeSetting + 's';
   const statHtml = infiniteMode
     ? `<div>streak<b>${streak}</b></div><div>best<b>${sessionBest}</b></div><div>timer<b>${timeDisplay}</b></div>`
@@ -1871,6 +1919,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
       setTimeout(() => { renderRound(); }, 900);
     } else {
       sessionBest = Math.max(sessionBest, streak);
+      addToPersistentMissed(country.n);
       setTimeout(() => { renderEnd(country); }, 1300);
     }
   } else {
@@ -1878,6 +1927,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
       score++; streak++;
       bestStreak = Math.max(bestStreak, streak);
       checkStreakMilestone(streak);
+      if(practiceMissedActive) removeFromPersistentMissed(country.n);
       setTimeout(() => {
         round++;
         if(round >= ROUNDS){
@@ -1893,6 +1943,7 @@ function resolveRound(isRight, country, btnEl, inputEl, timedOut){
     } else {
       streak = 0; lastMilestoneStreak = 0;
       missed.push(country);
+      addToPersistentMissed(country.n);
       allFlagsStartTime = null;
       if(reviewModeActive || (roundsSetting === 'all' && !isDailyChallenge)){
         setTimeout(() => { if(reviewModeActive){ endMissedReview(); } else { renderEnd(); } }, 1300);
