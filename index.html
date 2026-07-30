@@ -399,36 +399,43 @@
       <button data-mode="choice">Multiple choice</button>
       <button data-mode="type">Type answer</button>
     </div>
-    <div class="mode-toggle" id="timeToggle" style="margin-top:8px;">
-      <button data-time="3">3s</button>
-      <button data-time="5">5s</button>
-      <button data-time="10">10s</button>
-      <button data-time="infinite" id="infiniteTimeBtn" style="line-height:1;"><span style="font-size:15px; display:inline-block; transform:scaleX(1.3); line-height:1;">&#8734;</span></button>
-    </div>
-    <div class="mode-toggle" id="lengthToggle" style="margin-top:8px; flex-wrap:wrap;">
-      <button data-length="10">10 flags</button>
-      <button data-length="25">25 flags</button>
-      <button data-length="50">50 flags</button>
-      <button data-length="all">All flags</button>
-      <button data-length="infinite">Infinite</button>
-    </div>
-    <div class="mode-toggle" id="difficultyToggle" style="margin-top:8px;">
-      <button data-difficulty="easy">Easy</button>
-      <button data-difficulty="medium">Medium</button>
-      <button data-difficulty="hard">Hard</button>
-    </div>
-    <div class="mode-toggle" id="continentToggle" style="margin-top:8px; flex-wrap:wrap;">
-      <button data-continent="all" class="active">All continents</button>
-      <button data-continent="Africa">Africa</button>
-      <button data-continent="Asia">Asia</button>
-      <button data-continent="Europe">Europe</button>
-      <button data-continent="North America">N. America</button>
-      <button data-continent="South America">S. America</button>
-      <button data-continent="Oceania">Oceania</button>
-    </div>
     <div class="mode-toggle" id="playModeToggle" style="margin-top:8px;">
       <button data-play="solo">Solo</button>
       <button data-play="versus">Versus</button>
+    </div>
+    <button id="advancedToggleBtn" style="margin-top:14px; background:transparent; border:1px solid rgba(255,255,255,0.3); color:var(--paper); font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; padding:8px 16px; border-radius:20px; cursor:pointer;">Advanced settings &#9662;</button>
+    <div id="advancedSettings" style="display:none;">
+      <p style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brass); opacity:0.8; margin:16px 0 4px;">Timer</p>
+      <div class="mode-toggle" id="timeToggle">
+        <button data-time="3">3s</button>
+        <button data-time="5">5s</button>
+        <button data-time="10">10s</button>
+        <button data-time="infinite" id="infiniteTimeBtn" style="line-height:1;"><span style="font-size:15px; display:inline-block; transform:scaleX(1.3); line-height:1;">&#8734;</span></button>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brass); opacity:0.8; margin:14px 0 4px;">Length</p>
+      <div class="mode-toggle" id="lengthToggle" style="flex-wrap:wrap;">
+        <button data-length="10">10 flags</button>
+        <button data-length="25">25 flags</button>
+        <button data-length="50">50 flags</button>
+        <button data-length="all">All flags</button>
+        <button data-length="infinite">Infinite</button>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brass); opacity:0.8; margin:14px 0 4px;">Difficulty</p>
+      <div class="mode-toggle" id="difficultyToggle">
+        <button data-difficulty="easy">Easy</button>
+        <button data-difficulty="medium">Medium</button>
+        <button data-difficulty="hard">Hard</button>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brass); opacity:0.8; margin:14px 0 4px;">Continent</p>
+      <div class="mode-toggle" id="continentToggle" style="flex-wrap:wrap;">
+        <button data-continent="all" class="active">All continents</button>
+        <button data-continent="Africa">Africa</button>
+        <button data-continent="Asia">Asia</button>
+        <button data-continent="Europe">Europe</button>
+        <button data-continent="North America">N. America</button>
+        <button data-continent="South America">S. America</button>
+        <button data-continent="Oceania">Oceania</button>
+      </div>
     </div>
   </div>
 
@@ -1474,9 +1481,6 @@ function loadFlagInto(frameEl, country){
 function getMissingSelections(){
   const missing = [];
   if(!modeChosen) missing.push('an answer mode');
-  if(!timeChosen) missing.push('a timer');
-  if(!lengthChosen) missing.push('a length');
-  if(!difficultyChosen) missing.push('a difficulty');
   return missing;
 }
 
@@ -2658,6 +2662,14 @@ function renderVersusEnd(){
 }
 
 
+
+document.getElementById('advancedToggleBtn').addEventListener('click', () => {
+  const panel = document.getElementById('advancedSettings');
+  const btn = document.getElementById('advancedToggleBtn');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.innerHTML = isOpen ? 'Advanced settings &#9662;' : 'Advanced settings &#9652;';
+});
 
 document.getElementById('modeToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-mode]');
