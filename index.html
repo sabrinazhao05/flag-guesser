@@ -478,7 +478,7 @@
   <div class="flag-bar" id="flagBar" style="display:none;"></div>
   <div class="card" id="card"></div>
 
-  <footer style="text-align:center; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--paper); opacity:0.55;">
+  <footer id="siteFooter" style="text-align:center; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--paper); opacity:0.55;">
     <a href="how-to-play.html" style="color:var(--paper); margin:0 8px;">How to Play</a>
     <a href="flag-facts.html" style="color:var(--paper); margin:0 8px;">Flag Facts</a>
     <a href="about.html" style="color:var(--paper); margin:0 8px;">About</a>
@@ -1447,6 +1447,7 @@ function renderDailyResults(result){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
@@ -1670,6 +1671,7 @@ function renderStart(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
@@ -1721,6 +1723,7 @@ function renderRound(){
   const myRoundToken = roundToken;
   document.getElementById('masthead').style.display = 'none';
   document.getElementById('pauseSetting').style.display = 'none';
+  document.getElementById('siteFooter').style.display = 'none';
   document.getElementById('timerSoundSetting').style.display = 'none';
   document.body.classList.add('playing'); document.documentElement.classList.add('locked');
   const country = infiniteMode ? nextCountry() : deck[round];
@@ -1938,6 +1941,7 @@ function renderEnd(missedCountry){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
@@ -2042,6 +2046,7 @@ function endMissedReview(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   card.innerHTML = `
@@ -2089,6 +2094,7 @@ function renderLeaderboard(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
@@ -2148,6 +2154,7 @@ function renderAchievements(){
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
+  document.getElementById('siteFooter').style.display = 'block';
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
