@@ -75,6 +75,7 @@
 
   .mode-toggle{
     display:inline-flex;
+    justify-content:center;
     margin-top:14px;
     background:rgba(255,255,255,0.08);
     border-radius:30px;
@@ -451,6 +452,15 @@
 
   <div class="flag-bar" id="flagBar" style="display:none;"></div>
   <div class="card" id="card"></div>
+
+  <footer style="text-align:center; margin-top:24px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--paper); opacity:0.55;">
+    <a href="how-to-play.html" style="color:var(--paper); margin:0 8px;">How to Play</a>
+    <a href="flag-facts.html" style="color:var(--paper); margin:0 8px;">Flag Facts</a>
+    <a href="about.html" style="color:var(--paper); margin:0 8px;">About</a>
+    <a href="contact.html" style="color:var(--paper); margin:0 8px;">Contact</a>
+    <a href="privacy.html" style="color:var(--paper); margin:0 8px;">Privacy</a>
+    <a href="terms.html" style="color:var(--paper); margin:0 8px;">Terms</a>
+  </footer>
 </div>
 
 <script>
@@ -1293,12 +1303,12 @@ function isCorrectGuess(typed, country){
 
 function getPoolCountries(){
   let pool;
+  if(selectedContinent !== 'all'){
+    return COUNTRIES.filter(c => c.c === selectedContinent);
+  }
   if(difficulty === 'easy') pool = COUNTRIES.filter(c => EASY_SET.includes(c.n));
   else if(difficulty === 'medium') pool = COUNTRIES.filter(c => MEDIUM_SET.includes(c.n));
   else pool = COUNTRIES;
-  if(selectedContinent !== 'all'){
-    pool = pool.filter(c => c.c === selectedContinent);
-  }
   return pool;
 }
 
