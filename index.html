@@ -2115,11 +2115,12 @@ function endMissedReview(){
 
 function submitLeaderboardTime(elapsedSec){
   const statusEl = () => document.getElementById('leaderboardStatus');
+  const category = 'all-' + (selectedContinent === 'all' ? 'all' : selectedContinent);
   fetch(LEADERBOARD_API + '/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      category: 'all',
+      category: category,
       name: (playerName || 'Anonymous').trim() || 'Anonymous',
       time: elapsedSec
     })
@@ -2141,7 +2142,18 @@ function submitLeaderboardTime(elapsedSec){
   });
 }
 
-function renderLeaderboard(){
+const LEADERBOARD_SECTIONS = [
+  { key: 'all', label: 'All Continents' },
+  { key: 'Africa', label: 'Africa' },
+  { key: 'Asia', label: 'Asia' },
+  { key: 'Europe', label: 'Europe' },
+  { key: 'North America', label: 'N. America' },
+  { key: 'South America', label: 'S. America' },
+  { key: 'Oceania', label: 'Oceania' }
+];
+
+function renderLeaderboard(activeSection){
+  activeSection = activeSection || 'all';
   document.getElementById('flagBar').style.display = 'none';
   document.getElementById('masthead').style.display = 'block';
   document.getElementById('pauseSetting').style.display = 'flex';
@@ -2149,11 +2161,15 @@ function renderLeaderboard(){
   document.getElementById('timerSoundSetting').style.display = 'flex';
   document.body.classList.remove('playing'); document.documentElement.classList.remove('locked');
   const card = document.getElementById('card');
+  const tabsHtml = LEADERBOARD_SECTIONS.map(s =>
+    `<button data-section="${s.key}" class="${s.key === activeSection ? 'active' : ''}">${s.label}</button>`
+  ).join('');
   card.innerHTML = `
     <div class="end">
       <p class="flag-caption" style="margin-bottom:2px;">leaderboard</p>
       <div class="rank" style="font-size:22px;">Fastest full clears</div>
-      <div class="rank-sub">All flags, every difficulty combined</div>
+      <div class="rank-sub">All flags, Type Answer mode</div>
+      <div class="mode-toggle" id="leaderboardSectionToggle" style="flex-wrap:wrap; width:100%; justify-content:center; margin-top:14px;">${tabsHtml}</div>
       <div class="missed" id="leaderboardList" style="margin:18px 0; text-align:left;">
         <p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark); text-align:center;">Loading…</p>
       </div>
@@ -2161,7 +2177,13 @@ function renderLeaderboard(){
     </div>
   `;
   document.getElementById('backFromLeaderboardBtn').onclick = () => { renderStart(); };
-  fetch(LEADERBOARD_API + '/leaderboard?category=all')
+  document.getElementById('leaderboardSectionToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-section]');
+    if(!btn) return;
+    renderLeaderboard(btn.dataset.section);
+  });
+  const category = 'all-' + activeSection;
+  fetch(LEADERBOARD_API + '/leaderboard?category=' + encodeURIComponent(category))
     .then(res => {
       if(!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
