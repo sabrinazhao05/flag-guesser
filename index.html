@@ -2056,7 +2056,7 @@ function renderEnd(missedCountry){
         </div>
         ${missed.length ? `<div class="missed" id="missedList"></div>` : `<div class="missed">Clean record — every flag identified.</div>`}
         ${score === ROUNDS ? `<p id="leaderboardStatus" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal-dark);margin-top:14px;">Submitting your time…</p>` : ''}
-        <button class="next-btn" id="restartBtn">Play again</button>
+        ${practiceMissedActive ? `<button class="next-btn" id="backToMenuBtn2">Back to menu</button>` : `<button class="next-btn" id="restartBtn">Play again</button>`}
         ${missed.length ? `<button class="next-btn" id="reviewMissedBtn" style="margin-top:10px;">Review missed flags</button>` : ''}
         <button class="next-btn" id="viewLeaderboardBtn2" style="margin-top:10px;">View leaderboard</button>
         <button class="next-btn" id="shareScoreBtn" style="margin-top:10px;">Share score</button>
@@ -2068,7 +2068,11 @@ function renderEnd(missedCountry){
       missed.forEach(m => list.appendChild(missedRow(m)));
       document.getElementById('reviewMissedBtn').onclick = () => startMissedReview();
     }
-    document.getElementById('restartBtn').onclick = () => { buildDeck(); streak = 0; lastMilestoneStreak = 0; renderRound(); };
+    if(practiceMissedActive){
+      document.getElementById('backToMenuBtn2').onclick = () => { practiceMissedActive = false; renderStart(); };
+    } else {
+      document.getElementById('restartBtn').onclick = () => { buildDeck(); streak = 0; lastMilestoneStreak = 0; renderRound(); };
+    }
     document.getElementById('viewLeaderboardBtn2').onclick = () => { renderLeaderboard(); };
     document.getElementById('shareScoreBtn').onclick = () => shareScore(`I scored ${score}/${ROUNDS} (${pct}%) on ${difficulty} difficulty in Flag Guesser!`);
     document.getElementById('achievementsBtn').onclick = () => renderAchievements();
